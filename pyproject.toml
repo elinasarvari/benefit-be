@@ -1,5 +1,97 @@
+[project]
+name = "benefit-be"
+version = "0.1.0"
+description = "Benefit Case Platform backend (synthetic data only)"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "fastapi==0.162.2",
+    "uvicorn[standard]==0.54.0",
+    "pydantic==2.14.3",
+    "pydantic-settings==2.16.2",
+    "pyjwt==2.15.1",
+    "argon2-cffi==25.1.0",
+    "structlog==26.1.0",
+    "tenacity==9.2.1",
+    "httpx==0.28.1",
+    "temporalio==1.35.0",
+    "numpy==2.5.4",
+    "pymongo==4.19.0",
+    "tzdata==2026.6",
+    "langchain-core==1.7.6",
+    "langchain-anthropic==1.7.10",
+    "langchain-aws==1.9.2",
+    "opentelemetry-sdk==1.45.2",
+    "opentelemetry-exporter-otlp-proto-http==1.45.2",
+    "openinference-instrumentation-langchain==0.1.82",
+    "pypdf==7.0.0",
+    "reportlab==5.1.0",
+    "pillow==13.0.0",
+    "duckdb==2.0.0",
+    "dbt-duckdb==1.11.1",
+]
+
+[dependency-groups]
+dev = [
+    "pytest==9.2.0",
+    "pytest-asyncio==1.4.1.post1",
+    "pytest-playwright==0.10.0",
+    "hypothesis==6.170.15",
+    "mypy==2.4.1",
+    "ruff==0.17.4",
+    "pip-audit==2.10.1",
+    "pre-commit==4.7.0",
+    "honcho==2.0.0",
+    "pyyaml==6.0.3",
+    "types-pyyaml==6.0.12.20261103",
+]
+ml = [
+    "torch==2.15.0",
+    "sentence-transformers==6.2.0",
+]
+
+[tool.uv]
+default-groups = ["dev"]
+
 [tool.pytest.ini_options]
 pythonpath = ["."]
+# api and stack tests need the running stack and Playwright's sync loop, which breaks async tests
+# in the same session, so they only run when selected: `make test-api`, `make test-stack`.
+addopts = "--strict-markers -m 'not live_llm and not api and not stack'"
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+markers = [
+    "unit: fast tests with no running services",
+    "workflow: Temporal time-skipping, replay and restart tests",
+    "contract: OpenAPI, tool schema and CI contract checks",
+    "integration: tests against local PostgreSQL, MongoDB and Temporal",
+    "api: HTTP tests against the running API",
+    "stack: tests against the whole running stack",
+    "live_llm: calls a live model; run only by make smoke-ai",
+]
 
 [tool.ruff]
 line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "S", "ASYNC", "TID"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101", "S105", "S106"]
+"packages/agents/llm/factory.py" = ["TID251"]
+
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
+"anthropic".msg = "Provider SDKs are imported only in packages/agents/llm/factory.py (AG-5)."
+"langchain_anthropic".msg = "Provider SDKs are imported only in packages/agents/llm/factory.py (AG-5)."
+"langchain_aws".msg = "Provider SDKs are imported only in packages/agents/llm/factory.py (AG-5)."
+"boto3".msg = "Provider SDKs are imported only in packages/agents/llm/factory.py (AG-5)."
+
+[tool.mypy]
+strict = true
+plugins = ["pydantic.mypy"]
+python_version = "3.12"
+files = ["apps", "packages", "db", "scripts"]
+
+[[tool.mypy.overrides]]
+module = ["dbt.*", "duckdb.*", "reportlab.*", "openinference.*", "sentence_transformers.*"]
+ignore_missing_imports = true

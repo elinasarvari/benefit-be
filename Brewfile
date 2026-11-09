@@ -1,0 +1,10 @@
+tap "mongodb/brew"
+
+brew "python@3.12"
+brew "uv"
+brew "node@24"
+brew "pnpm"
+brew "mongodb/brew/mongodb-community@8.0"
+brew "mongosh"
+brew "temporal"
+brew "gitleaks"

@@ -1,0 +1,140 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  APP_ENV: test
+  LLM_MODE: fake
+  EMBEDDER: fake
+  RERANKER: fake
+  TRACING_ENABLED: "false"
+  CI: "true"
+
+jobs:
+  static:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/setup-backend
+      - run: make lint
+      - run: make typecheck
+      - run: uv run pip-audit
+      - name: Secrets scan
+        run: |
+          curl -fsSL https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz \
+            | sudo tar -xz -C /usr/local/bin gitleaks
+          gitleaks detect --no-banner
+
+  unit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup-backend
+      - run: make test-unit
+
+  workflow:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup-backend
+      - run: make test-workflow
+
+  contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup-backend
+      - run: make openapi-check
+      - run: make test-contract
+
+  integration:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup-backend
+      - uses: ./.github/actions/setup-services
+      - name: Start the Temporal dev server
+        run: |
+          nohup temporal server start-dev --headless --db-filename .data/temporal.db > temporal.log 2>&1 &
+          for _ in $(seq 1 30); do temporal operator cluster health > /dev/null 2>&1 && break; sleep 1; done
+      - run: make reset
+      - run: make test-integration
+
+  e2e:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: benefit-be
+      - name: Pick the frontend ref (same branch name if it exists, otherwise main)
+        id: sibling
+        working-directory: benefit-be
+        run: echo "ref=$(scripts/ci/resolve-sibling-ref.sh "https://github.com/${{ github.repository_owner }}/benefit-fe.git")" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ${{ github.repository_owner }}/benefit-fe
+          ref: ${{ steps.sibling.outputs.ref }}
+          path: benefit-fe
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+        with:
+          package_json_file: benefit-fe/package.json
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: benefit-fe/.nvmrc
+          cache: pnpm
+          cache-dependency-path: benefit-fe/pnpm-lock.yaml
+      - uses: ./benefit-be/.github/actions/setup-backend
+        with:
+          working-directory: benefit-be
+      - run: pnpm install --frozen-lockfile && pnpm build
+        working-directory: benefit-fe
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        id: playwright-cache
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ hashFiles('benefit-fe/pnpm-lock.yaml') }}
+      - run: pnpm exec playwright install --with-deps chromium
+        working-directory: benefit-fe
+      - uses: ./benefit-be/.github/actions/setup-services
+        with:
+          working-directory: benefit-be
+      - name: Reset data and start the stack
+        working-directory: benefit-be
+        run: |
+          make reset
+          nohup uv run honcho -f Procfile.ci start > stack.log 2>&1 &
+          scripts/ci/wait-ready.sh
+      - name: API and stack tests
+        working-directory: benefit-be
+        run: uv run pytest -m "stack or api"
+      - name: End-to-end tests
+        working-directory: benefit-fe
+        run: |
+          set -a; source ../benefit-be/.env; set +a
+          E2E_PASSWORD="$DEMO_PASSWORD" pnpm e2e
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: playwright
+          path: |
+            benefit-fe/playwright-report
+            benefit-fe/test-results
+            benefit-be/stack.log

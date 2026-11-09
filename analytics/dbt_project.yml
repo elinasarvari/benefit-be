@@ -1,0 +1,12 @@
+name: benefit_analytics
+version: "0.1.0"
+profile: benefit
+model-paths: ["models"]
+macro-paths: ["macros"]
+test-paths: ["tests"]
+clean-targets: ["target"]
+models:
+  benefit_analytics:
+    meta:
+      +schema: meta
+      +materialized: table

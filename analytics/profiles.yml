@@ -1,0 +1,7 @@
+benefit:
+  target: local
+  outputs:
+    local:
+      type: duckdb
+      path: "{{ env_var('DUCKDB_PATH', '.data/reporting.duckdb') }}"
+      threads: 1

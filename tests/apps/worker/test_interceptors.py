@@ -79,3 +79,12 @@ async def test_FR_000_10_request_id_header_propagated_from_client_to_activity_lo
     assert (
         "request_id" in structlog.contextvars.get_contextvars()
     )  # the caller's context is untouched
+
+
+def test_the_two_request_id_header_constants_stay_equal() -> None:
+    from apps.worker import interceptors, workflow_interceptor
+    from packages.platform import logging as platform_logging
+
+    # The workflow module can't import the platform one inside the sandbox, so keep a copy.
+    assert workflow_interceptor.REQUEST_ID_HEADER == platform_logging.REQUEST_ID_HEADER
+    assert interceptors.REQUEST_ID_HEADER == platform_logging.REQUEST_ID_HEADER

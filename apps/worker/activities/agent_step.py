@@ -13,6 +13,7 @@ from uuid import UUID
 
 import structlog
 from temporalio import activity
+from temporalio.exceptions import ApplicationError
 
 from packages.domain.agent_step import AgentStepInput, AgentStepResult
 from packages.platform.auth.tokens import issue_system_credential, verify_system_credential
@@ -45,9 +46,11 @@ class AgentStepActivities:
         info = activity.info()
         ttl = info.start_to_close_timeout
         if ttl is None:
-            raise ValueError("an agent step needs a start-to-close timeout (TW-10)")
+            raise ApplicationError(
+                "an agent step needs a start-to-close timeout (TW-10)", non_retryable=True
+            )
         if not info.workflow_id:
-            raise ValueError("an agent step must run inside a workflow")
+            raise ApplicationError("an agent step must run inside a workflow", non_retryable=True)
         credential = issue_system_credential(
             data.case_id, info.workflow_id, data.step, ttl, self._settings, self._clock
         )

@@ -22,6 +22,7 @@ from tests.integration.fixtures import open_client
 HOUSEHOLD_A, HOUSEHOLD_B = uuid.uuid4(), uuid.uuid4()
 CASE_A, CASE_B = uuid.uuid4(), uuid.uuid4()
 ROOT = Path(__file__).parents[2]
+PROJECTION = {"_id": 1, "case_id": 1, "household_id": 1}
 
 
 def principal(role: Role, household: uuid.UUID | None) -> Principal:
@@ -50,18 +51,18 @@ async def cases(integration_settings: Settings, owner_url: str):  # type: ignore
 
 async def test_FR_000_06_repository_without_scope_raises(cases) -> None:  # type: ignore[no-untyped-def]
     with pytest.raises(ScopeRequired):
-        await find_many(cases, "cases", None)
+        await find_many(cases, "cases", None, projection=PROJECTION)
     with pytest.raises(ScopeRequired):
-        await find_one(cases, "cases", None, {"_id": CASE_A})
+        await find_one(cases, "cases", None, {"_id": CASE_A}, projection=PROJECTION)
 
 
 async def test_FR_000_19_applicant_cannot_read_other_household(cases) -> None:  # type: ignore[no-untyped-def]
     applicant_a = Scope.for_principal(principal(Role.applicant, HOUSEHOLD_A))
     caseworker = Scope.for_principal(principal(Role.caseworker, None))
 
-    own = await find_many(cases, "cases", applicant_a)
-    other = await find_one(cases, "cases", applicant_a, {"_id": CASE_B})
-    everything = await find_many(cases, "cases", caseworker)
+    own = await find_many(cases, "cases", applicant_a, projection=PROJECTION)
+    other = await find_one(cases, "cases", applicant_a, {"_id": CASE_B}, projection=PROJECTION)
+    everything = await find_many(cases, "cases", caseworker, projection=PROJECTION)
 
     assert [doc["_id"] for doc in own] == [CASE_A]
     assert other is None
@@ -72,7 +73,7 @@ async def test_FR_000_19_applicant_without_a_household_is_refused(cases) -> None
     broken = Scope.for_principal(principal(Role.applicant, None))
 
     with pytest.raises(Forbidden):
-        await find_many(cases, "cases", broken)
+        await find_many(cases, "cases", broken, projection=PROJECTION)
 
 
 async def test_FR_000_19_system_scope_limited_to_its_case(cases) -> None:  # type: ignore[no-untyped-def]
@@ -81,13 +82,13 @@ async def test_FR_000_19_system_scope_limited_to_its_case(cases) -> None:  # typ
     )
     system = Scope.for_system(claims)
 
-    visible = await find_many(cases, "cases", system)
-    other = await find_one(cases, "cases", system, {"_id": CASE_B})
+    visible = await find_many(cases, "cases", system, projection=PROJECTION)
+    other = await find_one(cases, "cases", system, {"_id": CASE_B}, projection=PROJECTION)
 
     assert [doc["_id"] for doc in visible] == [CASE_A]
     assert other is None
     with pytest.raises(Forbidden):
-        await find_many(cases, "household_members", system)
+        await find_many(cases, "household_members", system, projection=PROJECTION)
 
 
 def test_FR_000_19_no_unscoped_queries_on_household_collections() -> None:

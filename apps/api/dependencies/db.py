@@ -10,7 +10,7 @@ from apps.api.repositories.users import UserRepository
 from packages.platform.audit import AuditWriter, MongoAuditWriter
 from packages.platform.auth.identity import IdentityProvider
 from packages.platform.clock import Clock, SystemClock
-from packages.platform.mongo import Client, make_client
+from packages.platform.mongo import Client
 from packages.platform.settings import Settings
 
 
@@ -20,12 +20,8 @@ def get_settings(request: Request) -> Settings:
 
 
 def get_mongo(request: Request) -> Client:
-    """One client per process, created on first use, with bounded waits (FR-000-13)."""
-    client: Client | None = getattr(request.app.state, "mongo", None)
-    if client is None:
-        settings = get_settings(request)
-        client = make_client(settings.MONGO_URL_APP.get_secret_value())
-        request.app.state.mongo = client
+    """The process-wide client, created in create_app with bounded waits (FR-000-13)."""
+    client: Client = request.app.state.mongo
     return client
 
 

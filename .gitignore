@@ -10,3 +10,6 @@ db/seeds/generated/
 __pycache__/
 *.pyc
 .coverage
+analytics/target/
+analytics/logs/
+analytics/.user.yml

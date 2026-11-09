@@ -12,8 +12,6 @@ from pymongo.collation import Collation
 
 from db.collections import AUDIT_COLLECTION
 from db.migrate import MigrationContext
-from packages.platform.scope import SCOPED_HOUSEHOLD_ONLY as SCOPED_HOUSEHOLD
-from packages.platform.scope import SCOPED_WITH_CASE as SCOPED_CASE
 
 UUID = {"bsonType": "binData"}
 ROLES = ["applicant", "caseworker", "supervisor"]
@@ -33,9 +31,22 @@ REASON_CODES = [
     "credential_expired",
 ]
 
-# Which collections are household-scoped is defined once, in packages.platform.scope.
-SCOPED_WITH_CASE = list(SCOPED_CASE)
-SCOPED_HOUSEHOLD_ONLY = list(SCOPED_HOUSEHOLD)
+# Frozen: a later collection goes in a later migration, never into this list (KD-11).
+SCOPED_WITH_CASE = [
+    "cases",
+    "case_events",
+    "review_tasks",
+    "caseworker_actions",
+    "determinations",
+    "household_snapshots",
+    "outbox",
+    "documents",
+    "extractions",
+    "agent_runs",
+    "notice_drafts",
+    "tool_calls",
+]
+SCOPED_HOUSEHOLD_ONLY = ["household_members", "coverage_periods"]
 UNSCOPED = ["rule_sets", "policy_passages", "eval_overrides"]
 
 

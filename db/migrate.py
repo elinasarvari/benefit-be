@@ -15,13 +15,13 @@ import pkgutil
 import sys
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from datetime import UTC, datetime
 from types import ModuleType
 
 from pymongo.asynchronous.database import AsyncDatabase
 
 from db import migrations as migrations_package
 from db.client import Client, make_client
+from packages.platform.clock import SystemClock
 from packages.platform.settings import Settings, load_settings
 
 MIGRATIONS_COLLECTION = "_migrations"
@@ -55,7 +55,7 @@ async def up(ctx: MigrationContext, target: str = "head") -> list[str]:
         step: Callable[[MigrationContext], Awaitable[None]] = module.upgrade
         await step(ctx)
         await ctx.db[MIGRATIONS_COLLECTION].insert_one(
-            {"_id": version, "applied_at": datetime.now(UTC)}
+            {"_id": version, "applied_at": SystemClock().now()}
         )
         ran.append(version)
         if target == version:

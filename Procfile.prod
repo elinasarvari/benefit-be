@@ -1,5 +1,5 @@
 temporal: temporal server start-dev --db-filename .data/temporal.db
-api: uv run uvicorn apps.api.main:create_app --factory --host 127.0.0.1 --port ${API_PORT:-8000}
+api: uv run uvicorn apps.api.main:create_app --factory --no-access-log --host 127.0.0.1 --port ${API_PORT:-8000}
 worker: uv run python -m apps.worker.main
 phoenix: PHOENIX_WORKING_DIR=.data/phoenix uvx --from arize-phoenix==21.0.0 phoenix serve
 web: pnpm --dir ${BENEFIT_FE_DIR:-../benefit-fe} preview --port 5173 --strictPort

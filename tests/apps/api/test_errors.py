@@ -89,3 +89,16 @@ def test_FR_000_08_unexpected_error_returns_generic_message_with_reference(
     assert len(logged) == 1
     assert "RuntimeError" in logged[0]["exception"]
     assert uuid.UUID(logged[0]["request_id"])
+
+
+def test_database_outage_returns_503_dependency_unavailable_without_internals(
+    client: TestClient, log_stream: io.StringIO
+) -> None:
+    response = client.get("/probe/database-down")
+
+    body = ErrorEnvelope.model_validate(response.json())
+    assert response.status_code == 503
+    assert body.error.code is ErrorCode.dependency_unavailable
+    for leaked in ("secret-pw", "db.internal", "mongodb://", "ServerSelection"):
+        assert leaked not in response.text
+    assert "dependency.unavailable" in log_stream.getvalue()

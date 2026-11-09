@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from fastapi import FastAPI
 from pydantic import BaseModel, Field
+from pymongo.errors import ServerSelectionTimeoutError
 
 from apps.api.errors import register_error_handlers
 from apps.api.middleware.request_context import RequestContextMiddleware
@@ -32,6 +33,10 @@ def build_probe_app() -> FastAPI:
     @app.get("/probe/boom")
     def boom() -> None:
         raise RuntimeError("SELECT secret FROM internal_table; host=db.internal")
+
+    @app.get("/probe/database-down")
+    def database_down() -> None:
+        raise ServerSelectionTimeoutError("mongodb://app:secret-pw@db.internal:27017 timed out")
 
     @app.get("/probe/items/{item_id}")
     def item(item_id: str) -> dict[str, str]:

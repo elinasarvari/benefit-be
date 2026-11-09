@@ -92,3 +92,19 @@ async def test_FR_000_22_token_not_in_activity_result_or_logs(settings: Settings
     token = tool.credentials[0]
     assert token not in result.model_dump_json()
     assert token not in stream.getvalue()
+
+
+async def test_FR_000_22_token_never_reaches_a_log_call_even_before_masking(
+    settings: Settings,
+) -> None:
+    from structlog.testing import capture_logs
+
+    tool = RecordingTool()
+
+    with capture_logs() as events:
+        await environment().run(
+            build(settings, tool).run, AgentStepInput(case_id=uuid.uuid4(), step="verify")
+        )
+
+    assert events, "the step must log something for this check to mean anything"
+    assert tool.credentials[0] not in repr(events)

@@ -19,9 +19,12 @@ from packages.platform.settings import Settings, load_settings
 
 
 async def export(settings: Settings) -> None:
-    client = make_client(settings.MONGO_URL_OWNER.get_secret_value())
+    client = make_client(settings.MONGO_URL_APP.get_secret_value())
     try:
-        marker = await client[settings.MONGO_DB]["_meta"].find_one({"_id": "dataset"})
+        marker = await client[settings.MONGO_DB]["_meta"].find_one(
+            {"_id": "dataset"},
+            {"synthetic": 1, "seed": 1, "generator_version": 1, "generated_at": 1},
+        )
     finally:
         await client.close()
     if marker is None:

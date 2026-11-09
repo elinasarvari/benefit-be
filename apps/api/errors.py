@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import uuid
 
+import structlog
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from pymongo.errors import PyMongoError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from packages.domain.errors import ErrorBody, ErrorCode, ErrorEnvelope, FieldError
@@ -47,6 +49,13 @@ _CODE_FOR_STATUS = {
 
 
 def register_error_handlers(app: FastAPI) -> None:
+    @app.exception_handler(PyMongoError)
+    async def handle_database(request: Request, exc: PyMongoError) -> JSONResponse:
+        structlog.get_logger().error(
+            "dependency.unavailable", dependency="mongo", error=type(exc).__name__
+        )
+        return error_response(ErrorCode.dependency_unavailable, _reference_id(request))
+
     @app.exception_handler(AppError)
     async def handle_app_error(request: Request, exc: AppError) -> JSONResponse:
         return error_response(

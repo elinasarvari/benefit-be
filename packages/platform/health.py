@@ -62,7 +62,9 @@ class MongoCheck:
     async def probe(self) -> CheckStatus:
         client = make_client(self._url)
         try:
-            marker = await client[self._database]["_meta"].find_one({"_id": "dataset"})
+            marker = await client[self._database]["_meta"].find_one(
+                {"_id": "dataset"}, {"synthetic": 1}
+            )
         finally:
             await client.close()
         return CheckStatus.ok if marker and marker.get("synthetic") is True else CheckStatus.down

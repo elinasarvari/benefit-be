@@ -269,6 +269,13 @@
         "title": "UserPublic",
         "type": "object"
       }
+    },
+    "securitySchemes": {
+      "sessionCookie": {
+        "in": "cookie",
+        "name": "benefit_session",
+        "type": "apiKey"
+      }
     }
   },
   "info": {
@@ -322,6 +329,7 @@
             "description": "validation_failed"
           }
         },
+        "security": [],
         "summary": "Login",
         "tags": [
           "auth"
@@ -418,6 +426,7 @@
             "description": "Successful Response"
           }
         },
+        "security": [],
         "summary": "Health",
         "tags": [
           "health"
@@ -431,10 +440,12 @@
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/ReadinessReport"
+                }
               }
             },
-            "description": "Successful Response"
+            "description": "ready or degraded"
           },
           "503": {
             "content": {
@@ -447,11 +458,17 @@
             "description": "not_ready"
           }
         },
+        "security": [],
         "summary": "Ready",
         "tags": [
           "health"
         ]
       }
     }
-  }
+  },
+  "security": [
+    {
+      "sessionCookie": []
+    }
+  ]
 }

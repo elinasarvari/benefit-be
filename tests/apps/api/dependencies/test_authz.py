@@ -98,3 +98,26 @@ def test_FR_000_23_refused_access_writes_access_refused_audit_entry(
     assert entry.target_type == "route"
     assert entry.target_id == ROUTE
     assert entry.reference_id == response.headers["X-Request-ID"]
+
+
+def test_FR_000_10_request_log_carries_user_id_and_role(
+    client: TestClient, settings: Settings
+) -> None:
+    import io
+    import json
+
+    from packages.platform.logging import clear_context, configure_logging
+
+    stream = io.StringIO()
+    configure_logging(settings, "api", stream=stream)
+    try:
+        sign_in(client, settings, Role.caseworker)
+        client.get(ROUTE)
+    finally:
+        clear_context()
+
+    record = next(
+        json.loads(line) for line in stream.getvalue().splitlines() if "request.completed" in line
+    )
+    assert record["role"] == "caseworker"
+    assert record["user_id"]

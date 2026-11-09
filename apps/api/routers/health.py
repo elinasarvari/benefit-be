@@ -26,7 +26,10 @@ async def health() -> HealthReport:
 @router.get(
     "/ready",
     operation_id="getReadiness",
-    responses={503: {"model": ReadinessReport, "description": "not_ready"}},
+    responses={
+        200: {"model": ReadinessReport, "description": "ready or degraded"},
+        503: {"model": ReadinessReport, "description": "not_ready"},
+    },
 )
 async def ready(checks: Annotated[list[Check], Depends(get_checks)]) -> JSONResponse:
     return readiness_response(await build_report("api", checks))

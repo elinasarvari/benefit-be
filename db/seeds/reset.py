@@ -38,7 +38,7 @@ async def guard(settings: Settings) -> None:
     client = make_client(settings.MONGO_URL_OWNER.get_secret_value())
     try:
         db = client[settings.MONGO_DB]
-        marker = await db["_meta"].find_one({"_id": "dataset"})
+        marker = await db["_meta"].find_one({"_id": "dataset"}, {"synthetic": 1})
         has_data = False
         for name in set(await db.list_collection_names()) - {MIGRATIONS_COLLECTION, "_meta"}:
             if await db[name].estimated_document_count() > 0:

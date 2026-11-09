@@ -70,7 +70,7 @@ async def seed(settings: Settings) -> None:
                 "synthetic": True,
                 "seed": SEED,
                 "generator_version": GENERATOR_VERSION,
-                "generated_at": datetime.now(UTC),
+                "generated_at": SEEDED_AT,
             },
             upsert=True,
         )

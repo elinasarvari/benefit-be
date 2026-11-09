@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from uuid import UUID
 
 from pydantic import ValidationError
@@ -22,7 +23,7 @@ class LocalIdentityProvider:
             record = None
         # An unknown user still costs one password check, so timing doesn't reveal which exist.
         stored = record.password_hash if record else DUMMY_HASH
-        matches = verify_password(stored, password)
+        matches = await asyncio.to_thread(verify_password, stored, password)
         return record.user if record and matches else None
 
     async def get_user(self, user_id: UUID) -> UserPublic | None:

@@ -47,3 +47,35 @@ def test_the_only_open_routes_are_health_ready_and_login(
     settings: Settings, method: str, path: str
 ) -> None:
     assert (method, path) in routes(settings)
+
+
+@pytest.mark.parametrize(
+    "path", ["/docs", "/redoc", "/openapi.json", "/api/v1/openapi.json", "/docs/oauth2-redirect"]
+)
+def test_FR_000_06_no_documentation_or_schema_routes_are_served(
+    settings: Settings, path: str
+) -> None:
+    assert TestClient(create_app(settings)).get(path).status_code == 404
+
+
+def test_FR_000_18_openapi_declares_the_session_cookie_scheme_and_the_open_routes(
+    settings: Settings,
+) -> None:
+    schema = create_app(settings).openapi()
+
+    assert schema["components"]["securitySchemes"]["sessionCookie"] == {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "benefit_session",
+    }
+    assert schema["security"] == [{"sessionCookie": []}]
+    for method, path in OPEN_ROUTES:
+        assert schema["paths"][path][method.lower()]["security"] == []
+    protected = [
+        op
+        for path, ops in schema["paths"].items()
+        for method, op in ops.items()
+        if (method.upper(), path) not in OPEN_ROUTES
+    ]
+    assert protected
+    assert all("security" not in op for op in protected)

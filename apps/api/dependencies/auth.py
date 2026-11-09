@@ -26,7 +26,7 @@ from packages.platform.settings import Settings
 SESSION_COOKIE = "benefit_session"
 
 
-def current_principal(
+async def current_principal(
     request: Request,
     settings: Annotated[Settings, Depends(get_settings)],
     clock: Annotated[Clock, Depends(get_clock)],

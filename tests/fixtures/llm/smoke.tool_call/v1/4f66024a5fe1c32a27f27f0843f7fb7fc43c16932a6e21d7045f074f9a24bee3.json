@@ -1,0 +1,12 @@
+{
+  "prompt_id": "smoke.tool_call",
+  "prompt_version": "v1",
+  "input_sha256": "4f66024a5fe1c32a27f27f0843f7fb7fc43c16932a6e21d7045f074f9a24bee3",
+  "response": {
+    "content": "",
+    "tool_calls": [
+      {"id": "call_smoke_1", "name": "lookup_limit", "args": {"topic": "household size"}}
+    ],
+    "usage": {"input_tokens": 20, "output_tokens": 14}
+  }
+}

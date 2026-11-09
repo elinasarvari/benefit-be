@@ -1,0 +1,9 @@
+{
+  "prompt_id": "smoke.ping",
+  "prompt_version": "v1",
+  "input_sha256": "be758e8dd641a78a9e50425509e319bc4c828f25f771f6b8bcd453e934e356d7",
+  "response": {
+    "content": "pong",
+    "usage": {"input_tokens": 12, "output_tokens": 5}
+  }
+}

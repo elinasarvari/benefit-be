@@ -1,0 +1,9 @@
+{
+  "prompt_id": "smoke.cited_fact",
+  "prompt_version": "v1",
+  "input_sha256": "2a96adac7f8a125ffb7fbf5611b34e2a42bd7c2a604aaea8cf39f96bc36a1893",
+  "response": {
+    "content": "{\"answer\": \"The synthetic benefit review window is 30 days.\", \"citation\": \"POLICY-001-03\"}",
+    "usage": {"input_tokens": 58, "output_tokens": 31}
+  }
+}

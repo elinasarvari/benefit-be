@@ -40,6 +40,10 @@ def _load(name: str) -> dict[str, Any]:
     return loaded
 
 
+@pytest.mark.xfail(
+    strict=True,
+    reason="T026 deferred: test sets need the 001/010/011 domain models (specs/003 lanes/data-lane/blocked.md)",
+)
 @pytest.mark.parametrize("name", sorted(ITEM_FIELDS))
 async def test_FR_003_13_consumer_lanes_load_testsets_with_domain_models(
     name: str, integration_settings: Settings, owner_url: str

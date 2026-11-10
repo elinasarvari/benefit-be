@@ -31,6 +31,18 @@ DEFAULT: ActivityOptions = {
     ),
 }
 
+# Determination by the rules engine (ADR-010-04): 3 attempts, then the case opens a review task.
+RULES_STEP: ActivityOptions = {
+    "start_to_close_timeout": timedelta(seconds=60),
+    "retry_policy": RetryPolicy(
+        initial_interval=timedelta(seconds=1),
+        backoff_coefficient=2.0,
+        maximum_interval=timedelta(seconds=30),
+        maximum_attempts=3,
+        non_retryable_error_types=NON_RETRYABLE_ERRORS,
+    ),
+}
+
 AGENT_STEP: ActivityOptions = {
     "start_to_close_timeout": timedelta(seconds=120),
     "retry_policy": RetryPolicy(

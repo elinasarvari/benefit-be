@@ -100,6 +100,21 @@ def test_FR_000_04_cross_field_rules_refuse_start(
     assert f"setting {setting}" in capsys.readouterr().err
 
 
+def test_FR_010_02_review_settings_default_2_and_4_and_escalation_after_reminder(
+    base: dict[str, str], capsys: pytest.CaptureFixture[str]
+) -> None:
+    settings = Settings(_env_file=None, **base)
+    assert (settings.REVIEW_REMINDER_DAYS, settings.REVIEW_ESCALATION_DAYS) == (2, 4)
+
+    for escalation in ("2", "1"):
+        with pytest.raises(SystemExit) as exit_info:
+            load_settings(
+                _env_file=None, **base, REVIEW_REMINDER_DAYS="2", REVIEW_ESCALATION_DAYS=escalation
+            )
+        assert exit_info.value.code == 2
+        assert "setting REVIEW_ESCALATION_DAYS" in capsys.readouterr().err
+
+
 def test_environment_picks_defaults_for_models_and_tracing(
     base: dict[str, str], monkeypatch: pytest.MonkeyPatch
 ) -> None:

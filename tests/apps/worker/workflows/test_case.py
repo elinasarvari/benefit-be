@@ -6,6 +6,9 @@ import asyncio
 from datetime import date, timedelta
 
 import pytest
+from temporalio.api.enums.v1 import EventType
+from temporalio.client import WorkflowFailureError, WorkflowHistory
+from temporalio.exceptions import CancelledError
 
 from apps.worker.workflows.case import CaseWorkflow
 from apps.worker.workflows.case_states import coverage_for
@@ -131,7 +134,34 @@ async def test_FR_001_20_override_keeps_determination() -> None:
     assert all(c.event.reason_code != DeterminationOutcome.eligible.value for c in stubs.changes)
 
 
-OUTAGE_ATTEMPTS = 12  # more than the 5 attempts of the DEFAULT retry policy
+OUTAGE_ATTEMPTS = 12  # more than the 5 attempts of the old DEFAULT retry policy
+ACTIVITIES_ON_HAPPY_PATH = 5  # record x3 (verifying, determining, decided), verify, determine
+
+
+def event_types(history: WorkflowHistory) -> list[str]:
+    return [EventType.Name(e.event_type) for e in history.events]
+
+
+def assert_retries_left_no_trace(history: WorkflowHistory) -> None:
+    """The server retried the failing activity: no timer, no failed attempt, one schedule each."""
+    types = event_types(history)
+    assert "EVENT_TYPE_TIMER_STARTED" not in types
+    assert "EVENT_TYPE_ACTIVITY_TASK_FAILED" not in types
+    assert types.count("EVENT_TYPE_ACTIVITY_TASK_SCHEDULED") == ACTIVITIES_ON_HAPPY_PATH
+
+
+def started_attempt(history: WorkflowHistory, activity_type: str) -> int:
+    scheduled = {
+        e.event_id: e.activity_task_scheduled_event_attributes.activity_type.name
+        for e in history.events
+        if e.HasField("activity_task_scheduled_event_attributes")
+    }
+    return max(
+        e.activity_task_started_event_attributes.attempt
+        for e in history.events
+        if e.HasField("activity_task_started_event_attributes")
+        and scheduled[e.activity_task_started_event_attributes.scheduled_event_id] == activity_type
+    )
 
 
 async def test_FR_001_03_record_case_change_outage_beyond_retry_policy_still_decides() -> None:
@@ -139,13 +169,16 @@ async def test_FR_001_03_record_case_change_outage_beyond_retry_policy_still_dec
     async with environment() as env, worker(env.client, stubs):
         handle, _ = await start(env)
         final = await handle.result()
+        history = await handle.fetch_history()
 
-    assert stubs.record_attempts > OUTAGE_ATTEMPTS
+    assert stubs.record_attempts == OUTAGE_ATTEMPTS + 3
     assert final.state is CaseState.decided
     assert final.outcome is CaseOutcome.approved
     assert [c.seq for c in stubs.changes] == [1, 2, 3]  # each change written once, in order
     assert deciding(stubs).case_update is not None
     assert deciding(stubs).case_update.open is False  # the household is not locked out
+    assert started_attempt(history, "record_case_change") == OUTAGE_ATTEMPTS + 1
+    assert_retries_left_no_trace(history)
 
 
 async def test_FR_001_03_determination_outage_beyond_retry_policy_still_decides() -> None:
@@ -153,10 +186,37 @@ async def test_FR_001_03_determination_outage_beyond_retry_policy_still_decides(
     async with environment() as env, worker(env.client, stubs):
         handle, _ = await start(env)
         final = await handle.result()
+        history = await handle.fetch_history()
 
     assert stubs.determine_attempts == OUTAGE_ATTEMPTS + 1
     assert len(stubs.determine_calls) == 1
     assert final.outcome is CaseOutcome.approved
+    assert started_attempt(history, "determine_eligibility") == OUTAGE_ATTEMPTS + 1
+    assert_retries_left_no_trace(history)
+
+
+async def test_FR_001_03_cancel_during_failing_activity_cancels_workflow() -> None:
+    """BE-7: a cancel that arrives while an activity is failing ends the workflow, not a retry."""
+    stubs = Stubs(result=ELIGIBLE, determine_failures=10_000)
+    async with environment() as env, worker(env.client, stubs):
+        handle, _ = await start(env)
+        for _ in range(200):
+            if stubs.determine_attempts >= 2:
+                break
+            await asyncio.sleep(0.05)
+        assert stubs.determine_attempts >= 2
+        await handle.cancel()
+        with pytest.raises(WorkflowFailureError) as failure:
+            await handle.result()
+        attempts_at_cancel = stubs.determine_attempts
+        await env.sleep(timedelta(hours=1))
+        history = await handle.fetch_history()
+
+    assert isinstance(failure.value.cause, CancelledError)
+    assert event_types(history)[-1] == "EVENT_TYPE_WORKFLOW_EXECUTION_CANCELED"
+    assert stubs.determine_attempts == attempts_at_cancel  # no retry after the cancel
+    assert stubs.determine_calls == []
+    assert not any(c.event.to_state is CaseState.decided for c in stubs.changes)
 
 
 async def test_FR_001_02_disallowed_action_recorded_rejected() -> None:

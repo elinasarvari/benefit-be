@@ -15,6 +15,7 @@ from uuid import UUID, uuid5
 import structlog
 from temporalio import activity
 
+from apps.worker.policies import warn_if_retrying
 from packages.domain.case import (
     DenialReason,
     Determination,
@@ -78,6 +79,7 @@ class DeterminationActivities:
 
     @activity.defn(name="determine_eligibility")
     async def determine_eligibility(self, request: DeterminationRequest) -> Determination:
+        warn_if_retrying()  # UNTIL_DONE: the server retries an outage without limit
         scope = Scope.for_worker(request.case_id, request.household_id)
         outcome = await self._results.outcome_for(scope)
         log.info(

@@ -12,18 +12,17 @@ order and replay is deterministic.
 
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta
+from datetime import date, datetime
 from typing import Any
 from uuid import UUID, uuid5
 
 from temporalio import workflow
 from temporalio.common import RawValue
-from temporalio.exceptions import ActivityError, RetryState
 
 with workflow.unsafe.imports_passed_through():
     from pydantic import ValidationError
 
-    from apps.worker.policies import AGENT_STEP, DEFAULT
+    from apps.worker.policies import AGENT_STEP, UNTIL_DONE
     from apps.worker.workflows.calendar import (
         case_now_wf,
         case_today_wf,
@@ -78,11 +77,6 @@ ACTION_NOT_ALLOWED = "action_not_allowed"
 REASON_REQUIRED = "reason_required"
 NO_OPEN_TASK = "no_open_task"
 
-# After an activity's retry policy is used up (a long database outage), the workflow waits on a
-# timer and tries again instead of failing: a failed CaseWorkflow can't be restarted
-# (REJECT_DUPLICATE) and would leave the case open, locking the household out (TW-10, ADR-001-02).
-OUTAGE_PAUSE = timedelta(minutes=1)
-
 
 def parse_action(raw: dict[str, Any]) -> tuple[CaseworkerActionRequest | None, str | None]:
     """Decode the signal payload. An override without a reason is kept, so it can be rejected
@@ -130,14 +124,16 @@ class CaseWorkflow:
         )
         # 002, 010 and 011 add the needs-review and missing-document branches (TW-7: patched).
         await self._move(CaseState.determining, VERIFICATION_COMPLETE)
-        determination: Determination = await self._until_done(
+        # UNTIL_DONE: an outage is retried by the server, never fails the case (ADR-001-02).
+        determination: Determination = await workflow.execute_activity(
             "determine_eligibility",
             DeterminationRequest(
                 case_id=start.case_id,
                 household_id=start.household_id,
                 as_of_date=case_today_wf(start.clock),
             ),
-            Determination,
+            result_type=Determination,
+            **UNTIL_DONE,
         )
         self._determination = determination
 
@@ -185,23 +181,6 @@ class CaseWorkflow:
         return AllowedActions(task_id=task.id, actions=list(task.allowed_actions))
 
     # --- Steps -------------------------------------------------------------------------------
-
-    async def _until_done(self, activity: str, arg: Any, result_type: type | None = None) -> Any:
-        """Run a DEFAULT-policy activity until it succeeds. A non-retryable error (validation,
-        permission) is a programming error and still fails the workflow."""
-        while True:
-            try:
-                return await workflow.execute_activity(
-                    activity, arg, result_type=result_type, **DEFAULT
-                )
-            except ActivityError as error:
-                if error.retry_state is RetryState.NON_RETRYABLE_FAILURE:
-                    raise
-                workflow.logger.warning(
-                    "activity.retries_exhausted",
-                    extra={"activity": activity, "case_id": str(self._start.case_id)},
-                )
-                await workflow.sleep(OUTAGE_PAUSE)
 
     def _open_task(self) -> ReviewTask | None:
         task = self._task
@@ -271,7 +250,7 @@ class CaseWorkflow:
             event=event,
             **parts,
         )
-        await self._until_done("record_case_change", change)
+        await workflow.execute_activity("record_case_change", change, **UNTIL_DONE)
         if event.to_state is not None:
             self._state = event.to_state
 

@@ -1,13 +1,16 @@
 from __future__ import annotations
 
 import uuid
+from dataclasses import replace
 from datetime import date
 
 import pytest
+from structlog.testing import capture_logs
 from temporalio.testing import ActivityEnvironment
 
 from apps.worker.activities.determination import DeterminationActivities, FixedStubResults
 from apps.worker.activities.verification import verify_documents
+from apps.worker.policies import WARN_AFTER_ATTEMPTS
 from packages.domain.case import (
     DenialReason,
     DeterminationOutcome,
@@ -67,3 +70,28 @@ async def test_FR_001_16_stub_verification_is_complete_without_review() -> None:
 
     assert outcome.complete is True
     assert outcome.needs_review is False
+
+
+@pytest.mark.parametrize("attempt", [1, WARN_AFTER_ATTEMPTS, WARN_AFTER_ATTEMPTS + 1, 40])
+async def test_FR_001_03_outage_retry_logs_warning_with_attempt_only(attempt: int) -> None:
+    """UNTIL_DONE retries are invisible in history, so later attempts warn in the log (BE-6)."""
+    env = ActivityEnvironment()
+    env.info = replace(env.info, workflow_id=f"case-{CASE_ID}", attempt=attempt)
+    request = DeterminationRequest(case_id=CASE_ID, household_id=H_ELIGIBLE, as_of_date=AS_OF)
+
+    with capture_logs() as logs:
+        await env.run(DeterminationActivities(SEEDED).determine_eligibility, request)
+
+    warnings = [entry for entry in logs if entry["log_level"] == "warning"]
+    if attempt <= WARN_AFTER_ATTEMPTS:
+        assert warnings == []
+        return
+    assert warnings == [
+        {
+            "event": "activity.retrying",
+            "log_level": "warning",
+            "activity_type": env.info.activity_type,
+            "attempt": attempt,
+            "workflow_id": f"case-{CASE_ID}",
+        }
+    ]  # IDs and the attempt number only, no personal data (PL-11)

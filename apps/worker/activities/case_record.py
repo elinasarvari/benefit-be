@@ -11,6 +11,7 @@ from typing import Protocol
 import structlog
 from temporalio import activity
 
+from apps.worker.policies import warn_if_retrying
 from packages.domain.case import CaseChange
 from packages.platform.scope import Scope
 
@@ -29,6 +30,7 @@ class CaseRecordActivities:
 
     @activity.defn(name="record_case_change")
     async def record_case_change(self, change: CaseChange) -> None:
+        warn_if_retrying()  # UNTIL_DONE: the server retries an outage without limit
         scope = Scope.for_worker(change.case_id, change.household_id)
         applied = await self._repository.apply(change, scope)
         log.info(

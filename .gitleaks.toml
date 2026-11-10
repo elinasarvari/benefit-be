@@ -1,0 +1,6 @@
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Synthetic placeholders only; .env is git-ignored and never scanned for commit."
+paths = ['''\.env\.example$''']

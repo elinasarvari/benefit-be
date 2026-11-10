@@ -1,0 +1,33 @@
+name: Start MongoDB and install the Temporal CLI
+description: MongoDB 8.0 from MongoDB's apt repository, started by `make mongo-up`, plus the pinned Temporal CLI
+inputs:
+  working-directory:
+    description: Directory of the benefit-be checkout
+    default: .
+runs:
+  using: composite
+  steps:
+    - name: Install MongoDB 8.0
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        curl -fsSL https://www.mongodb.org/static/pgp/server-8.0.asc \
+          | sudo gpg -o /usr/share/keyrings/mongodb-server-8.0.gpg --dearmor
+        echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-8.0.gpg ] https://repo.mongodb.org/apt/ubuntu noble/mongodb-org/8.0 multiverse" \
+          | sudo tee /etc/apt/sources.list.d/mongodb-org-8.0.list
+        sudo apt-get update
+        sudo apt-get install -y mongodb-org
+    - name: Install the Temporal CLI
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        version="$(sed -n 's/^TEMPORAL_CLI_VERSION := //p' Makefile)"
+        curl -fsSL "https://github.com/temporalio/cli/releases/download/v${version}/temporal_cli_${version}_linux_amd64.tar.gz" \
+          | sudo tar -xz -C /usr/local/bin temporal
+        temporal --version
+    - name: Create .env and start MongoDB
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        python3 scripts/make_env.py
+        make mongo-up

@@ -1,0 +1,8 @@
+version: 2
+models:
+  - name: dataset_metadata
+    description: The synthetic-data marker of the reporting store (FR-000-14).
+    columns:
+      - name: synthetic
+        tests:
+          - not_null

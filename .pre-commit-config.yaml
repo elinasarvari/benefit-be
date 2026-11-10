@@ -1,0 +1,19 @@
+# Install once with `uv run pre-commit install` (make setup does it). Don't bypass these hooks.
+repos:
+  - repo: local
+    hooks:
+      - id: ruff
+        name: ruff check and format
+        entry: bash -c 'uv run ruff check . && uv run ruff format --check .'
+        language: system
+        pass_filenames: false
+      - id: mypy
+        name: mypy --strict
+        entry: uv run mypy
+        language: system
+        pass_filenames: false
+      - id: gitleaks
+        name: gitleaks (secrets scan)
+        entry: gitleaks protect --staged --no-banner
+        language: system
+        pass_filenames: false

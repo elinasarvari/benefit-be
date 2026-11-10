@@ -15,13 +15,20 @@ from temporalio.contrib.pydantic import pydantic_data_converter
 from temporalio.worker import Worker
 
 from apps.worker.activities.agent_step import AgentStepActivities, smoke_tool
+from apps.worker.activities.review_tasks import ReviewTaskActivities
 from apps.worker.activities.smoke import smoke_step
 from apps.worker.health import WorkerState, worker_checks
 from apps.worker.interceptors import ContextInterceptor
+from apps.worker.repositories.caseworker_actions import CaseworkerActionRepository
+from apps.worker.repositories.review_tasks import ReviewTaskRepository
+from apps.worker.workflows.review_harness import ReviewHarnessWorkflow
 from apps.worker.workflows.smoke import SmokeWorkflow
-from packages.platform.clock import SystemClock
+from packages.platform.audit import MongoAuditWriter
+from packages.platform.clock import Clock, SystemClock
 from packages.platform.health import serve_health
 from packages.platform.logging import configure_logging
+from packages.platform.mongo import Client as MongoClient
+from packages.platform.mongo import make_client
 from packages.platform.settings import Settings, load_settings
 
 log = structlog.get_logger()
@@ -47,19 +54,38 @@ async def connect_with_backoff(settings: Settings) -> Client:
             delay = min(delay * 2, MAX_BACKOFF_S)
 
 
+def review_activities(settings: Settings, mongo: MongoClient, clock: Clock) -> ReviewTaskActivities:
+    return ReviewTaskActivities(
+        ReviewTaskRepository(mongo[settings.MONGO_DB], clock),
+        CaseworkerActionRepository(
+            mongo, settings.MONGO_DB, MongoAuditWriter(mongo, settings.MONGO_AUDIT_DB)
+        ),
+    )
+
+
 async def run_worker(settings: Settings) -> None:
     state = WorkerState()
     server = serve_health("worker", settings.WORKER_HEALTH_PORT, worker_checks(settings, state))
     health_task = asyncio.create_task(server.serve())
+    mongo = make_client(settings.MONGO_URL_APP.get_secret_value())
     try:
         client = await connect_with_backoff(settings)
         clock = SystemClock()
         agent_steps = AgentStepActivities(settings, clock, smoke_tool(settings, clock))
+        review = review_activities(settings, mongo, clock)
         worker = Worker(
             client,
             task_queue=settings.TEMPORAL_TASK_QUEUE,
-            workflows=[SmokeWorkflow],
-            activities=[smoke_step, agent_steps.run],
+            # ReviewHarnessWorkflow stands in for 001's CaseWorkflow until it lands (010 T009).
+            workflows=[SmokeWorkflow, ReviewHarnessWorkflow],
+            activities=[
+                smoke_step,
+                agent_steps.run,
+                review.upsert_review_task,
+                review.set_review_flag,
+                review.close_review_task,
+                review.record_caseworker_action,
+            ],
             interceptors=[ContextInterceptor()],
         )
         state.polling = True
@@ -69,6 +95,7 @@ async def run_worker(settings: Settings) -> None:
         state.polling = False
         server.should_exit = True
         await health_task
+        await mongo.close()
 
 
 def main() -> int:

@@ -114,6 +114,10 @@ class Settings(BaseSettings):
     TRACING_OTLP_ENDPOINT: str = "http://localhost:6006/v1/traces"
     TRACING_PROJECT: str = "benefit"
 
+    # Review queue (case-clock days, ADR-010-03)
+    REVIEW_REMINDER_DAYS: int = Field(default=2, ge=1)
+    REVIEW_ESCALATION_DAYS: int = Field(default=4, ge=1)
+
     @model_validator(mode="before")
     @classmethod
     def _environment_defaults(cls, data: dict[str, Any]) -> dict[str, Any]:
@@ -136,6 +140,8 @@ class Settings(BaseSettings):
         demo = self.DEMO_PASSWORD.get_secret_value()
         if demo and len(demo) < 12:
             raise ValueError("DEMO_PASSWORD: must be at least 12 characters when set")
+        if self.REVIEW_ESCALATION_DAYS <= self.REVIEW_REMINDER_DAYS:
+            raise ValueError("REVIEW_ESCALATION_DAYS: must be greater than REVIEW_REMINDER_DAYS")
         if self.APP_ENV is AppEnv.test:
             if self.LLM_MODE is not LlmMode.fake:
                 raise ValueError("LLM_MODE: must be fake when APP_ENV=test")

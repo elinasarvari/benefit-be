@@ -13,19 +13,46 @@ import io
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
+from uuid import UUID
 
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 
 from db.client import make_client
-from db.seeds.ids import HOUSEHOLD_A, HOUSEHOLD_B, SEED
+from db.seeds.ids import HOUSEHOLD_A, HOUSEHOLD_B, HOUSEHOLD_C, SEED
 from db.seeds.users import SeedError, seed_users
+from packages.domain.case import DeterminationOutcome
 from packages.platform.settings import Settings, load_settings
 from packages.platform.synthetic import stamp_pdf
 
-GENERATOR_VERSION = "0.1.0"
+GENERATOR_VERSION = "0.2.0"
 GENERATED_DIR = Path(__file__).resolve().parent / "generated"
 SEEDED_AT = datetime(2026, 1, 1, tzinfo=UTC)
+
+# The result the 001 verification and determination stubs return for each household (research
+# R1), so `make dev` can drive every path: applicant1 approved, applicant2 review then denial or
+# override, applicant3 cannot-determine. 002 and 003 replace the stubs and ignore this field.
+STUB_RESULTS: dict[UUID, DeterminationOutcome] = {
+    HOUSEHOLD_A: DeterminationOutcome.eligible,
+    HOUSEHOLD_B: DeterminationOutcome.ineligible,
+    HOUSEHOLD_C: DeterminationOutcome.cannot_determine,
+}
+
+
+def household_documents() -> list[dict[str, Any]]:
+    return [
+        {"_id": hid, "created_at": SEEDED_AT, "stub_result": result.value}
+        for hid, result in STUB_RESULTS.items()
+    ]
+
+
+def stub_result_documents() -> list[dict[str, Any]]:
+    """The same results keyed by `household_id`, for the worker's household scope (ADR-001-06)."""
+    return [
+        {"_id": hid, "household_id": hid, "created_at": SEEDED_AT, "stub_result": result.value}
+        for hid, result in STUB_RESULTS.items()
+    ]
 
 
 def sample_pay_stub() -> bytes:
@@ -59,9 +86,8 @@ async def seed(settings: Settings) -> None:
     client = make_client(settings.MONGO_URL_OWNER.get_secret_value())
     try:
         db = client[settings.MONGO_DB]
-        await db["households"].insert_many(
-            [{"_id": hid, "created_at": SEEDED_AT} for hid in (HOUSEHOLD_A, HOUSEHOLD_B)]
-        )
+        await db["households"].insert_many(household_documents())
+        await db["household_stub_results"].insert_many(stub_result_documents())
         await seed_users(db, password, SEEDED_AT)
         await db["_meta"].replace_one(
             {"_id": "dataset"},

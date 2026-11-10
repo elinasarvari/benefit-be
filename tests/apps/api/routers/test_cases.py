@@ -1,0 +1,271 @@
+"""GET /api/v1/cases/{case_id} and POST .../review-tasks/{task_id}/actions (001; TC-59–TC-65)."""
+
+from __future__ import annotations
+
+import io
+import uuid
+from datetime import date, timedelta
+from uuid import UUID
+
+import pytest
+
+from packages.domain.audit import AuditAction, AuditOutcome
+from packages.domain.auth import Role
+from packages.domain.case import (
+    ActionOutcome,
+    AllowedActions,
+    Case,
+    CaseClock,
+    CaseState,
+    CaseType,
+    CaseworkerActionType,
+    OpenReviewTask,
+    ReviewReason,
+)
+from packages.platform.clock import case_today
+from packages.platform.logging import configure_logging
+from packages.platform.settings import Settings
+from tests.apps.api.case_fakes import FIXED_NOW, CaseApiHarness
+from tests.apps.api.fakes import HOUSEHOLD
+
+TASK = UUID("00000000-0000-4000-8000-0000000000e1")
+BOTH = [CaseworkerActionType.approve_denial, CaseworkerActionType.override_to_approve]
+SYNTH_REASON = "SYNTH-REASON-123"
+
+
+@pytest.fixture
+def harness(settings: Settings) -> CaseApiHarness:
+    return CaseApiHarness(settings)
+
+
+def put_case(
+    harness: CaseApiHarness,
+    *,
+    age_days: int = 3,
+    household: UUID = HOUSEHOLD,
+    state: CaseState = CaseState.under_review,
+) -> Case:
+    real_start = FIXED_NOW - timedelta(days=age_days)
+    clock = CaseClock(real_start=real_start, case_start=real_start, scale=1)
+    received = case_today(clock, real_start)
+    case_id = uuid.uuid4()
+    case = Case(
+        id=case_id,
+        case_id=case_id,
+        household_id=household,
+        case_type=CaseType.application,
+        submission_reference=str(uuid.uuid4()),
+        state=state,
+        open=state is not CaseState.decided,
+        received_on=received,
+        decision_deadline=received + timedelta(days=45),
+        clock=clock,
+        created_at=real_start,
+        updated_at=real_start,
+    )
+    harness.repo.cases[case_id] = case
+    return case
+
+
+def actions_url(case_id: UUID, task_id: UUID = TASK) -> str:
+    return f"/api/v1/cases/{case_id}/review-tasks/{task_id}/actions"
+
+
+def action_body(action: str = "approve_denial", reason: str | None = None) -> dict[str, object]:
+    return {"action": action, "reason": reason, "request_id": str(uuid.uuid4())}
+
+
+def test_FR_001_09_review_action_rejects_applicant_role(harness: CaseApiHarness) -> None:
+    case = put_case(harness)
+    harness.workflows.allowed = AllowedActions(task_id=TASK, actions=BOTH)
+
+    harness.sign_in(Role.applicant)
+    applicant = harness.client.post(actions_url(case.case_id), json=action_body())
+    harness.sign_out()
+    anonymous = harness.client.post(actions_url(case.case_id), json=action_body())
+
+    assert applicant.status_code == 403
+    assert anonymous.status_code == 401
+    assert harness.workflows.signals == []
+
+
+@pytest.mark.parametrize("reason", [None, "", "x" * 501])
+def test_FR_001_20_override_without_reason_returns_422(
+    harness: CaseApiHarness, reason: str | None
+) -> None:
+    case = put_case(harness)
+    harness.workflows.allowed = AllowedActions(task_id=TASK, actions=BOTH)
+    harness.sign_in(Role.caseworker)
+
+    response = harness.client.post(
+        actions_url(case.case_id), json=action_body("override_to_approve", reason)
+    )
+
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "validation_failed"
+    assert harness.workflows.signals == []
+
+
+@pytest.mark.parametrize(
+    "allowed",
+    [
+        AllowedActions(),  # no open task
+        AllowedActions(task_id=uuid.uuid4(), actions=BOTH),  # another task is open
+        AllowedActions(task_id=TASK, actions=[CaseworkerActionType.override_to_approve]),
+    ],
+)
+def test_FR_001_07_action_not_allowed_returns_409(
+    harness: CaseApiHarness, allowed: AllowedActions
+) -> None:
+    case = put_case(harness)
+    harness.workflows.allowed = allowed
+    harness.sign_in(Role.caseworker)
+
+    response = harness.client.post(actions_url(case.case_id), json=action_body())
+
+    assert response.status_code == 409
+    assert response.json()["error"]["code"] == "conflict"
+
+
+def test_FR_001_02_action_on_decided_case_recorded_rejected_by_api(
+    harness: CaseApiHarness,
+) -> None:
+    """TC-61, US1-AS5: the decided case's workflow has completed and can't take the signal, so
+    the API records the refusal through the repository (ADR-001-04 Option B)."""
+    case = put_case(harness, state=CaseState.decided)
+    harness.workflows.allowed = AllowedActions()  # decided: no open task
+    harness.workflows.completed = True
+    user = harness.sign_in(Role.caseworker)
+    body = action_body("override_to_approve", SYNTH_REASON)
+
+    first = harness.client.post(actions_url(case.case_id), json=body)
+    retried = harness.client.post(actions_url(case.case_id), json=body)  # same request_id
+
+    assert (first.status_code, retried.status_code) == (409, 409)
+    [recorded] = harness.repo.actions.values()
+    assert str(recorded.id) == body["request_id"]
+    assert (recorded.case_id, recorded.household_id) == (case.case_id, case.household_id)
+    assert recorded.task_id == TASK
+    assert recorded.action is CaseworkerActionType.override_to_approve
+    assert recorded.reviewer_id == user.id
+    assert recorded.outcome is ActionOutcome.rejected
+    assert recorded.real_time == FIXED_NOW
+    [entry] = harness.audit.entries  # one audit entry, even for the retried request
+    assert entry.action is AuditAction.caseworker_action
+    assert entry.outcome is AuditOutcome.refused
+    assert (entry.actor_id, entry.target_id) == (str(user.id), str(case.case_id))
+    assert entry.reference_id == body["request_id"]
+
+
+def test_FR_001_02_refused_action_on_running_workflow_left_to_workflow(
+    harness: CaseApiHarness,
+) -> None:
+    case = put_case(harness)
+    harness.workflows.allowed = AllowedActions(task_id=TASK, actions=BOTH)
+    harness.sign_in(Role.caseworker)
+
+    response = harness.client.post(actions_url(case.case_id, uuid.uuid4()), json=action_body())
+
+    assert response.status_code == 409
+    assert len(harness.workflows.signals) == 1  # the workflow records `action_rejected`
+    assert harness.repo.actions == {}
+    assert harness.audit.entries == []
+
+
+@pytest.mark.parametrize("role", [Role.caseworker, Role.supervisor])
+def test_FR_001_07_allowed_action_signals_with_principal_reviewer_returns_202(
+    harness: CaseApiHarness, role: Role
+) -> None:
+    case = put_case(harness)
+    harness.workflows.allowed = AllowedActions(task_id=TASK, actions=BOTH)
+    user = harness.sign_in(role)
+    body = action_body()
+
+    spoofed = harness.client.post(
+        actions_url(case.case_id), json={**body, "reviewer_id": "cw-synth-1"}
+    )
+    response = harness.client.post(actions_url(case.case_id), json=body)
+
+    assert spoofed.status_code == 422  # a reviewer in the body is never accepted
+    assert response.status_code == 202
+    [(case_id, request)] = harness.workflows.signals
+    assert case_id == case.case_id
+    assert request.task_id == TASK
+    assert request.action is CaseworkerActionType.approve_denial
+    assert request.reviewer_id == user.id
+    assert str(request.request_id) == body["request_id"]
+
+
+def test_FR_001_20_review_action_logs_no_reason_text(
+    harness: CaseApiHarness, caplog: pytest.LogCaptureFixture
+) -> None:
+    stream = io.StringIO()
+    configure_logging(harness.settings, "api", stream=stream)
+    case = put_case(harness)
+    harness.workflows.allowed = AllowedActions(task_id=TASK, actions=BOTH)
+    harness.sign_in(Role.caseworker)
+
+    accepted = harness.client.post(
+        actions_url(case.case_id), json=action_body("override_to_approve", SYNTH_REASON)
+    )
+    harness.workflows.allowed = AllowedActions()
+    refused = harness.client.post(
+        actions_url(case.case_id), json=action_body("override_to_approve", SYNTH_REASON)
+    )
+
+    assert (accepted.status_code, refused.status_code) == (202, 409)
+    assert harness.workflows.signals[0][1].reason == SYNTH_REASON  # reaches the workflow
+    logged = stream.getvalue()
+    assert "case.action_signalled" in logged and "case.action_refused" in logged
+    assert str(case.case_id) in logged  # PL-11: case_id is bound on every line
+    for text in (logged, caplog.text, refused.text):
+        assert SYNTH_REASON not in text
+        assert str(HOUSEHOLD) not in text
+
+
+def test_FR_001_11_get_case_returns_days_remaining_and_at_risk(harness: CaseApiHarness) -> None:
+    case = put_case(harness, age_days=36)
+    harness.repo.tasks[case.case_id] = OpenReviewTask(
+        task_id=TASK, reason=ReviewReason.adverse_determination, allowed_actions=BOTH
+    )
+    young = put_case(harness, age_days=3, household=uuid.uuid4(), state=CaseState.determining)
+    decided = put_case(harness, age_days=40, household=uuid.uuid4(), state=CaseState.decided)
+
+    harness.sign_in(Role.caseworker)
+    body = harness.client.get(f"/api/v1/cases/{case.case_id}").json()
+    young_body = harness.client.get(f"/api/v1/cases/{young.case_id}").json()
+    decided_body = harness.client.get(f"/api/v1/cases/{decided.case_id}").json()
+    harness.sign_in(Role.applicant)
+    own = harness.client.get(f"/api/v1/cases/{case.case_id}")
+
+    assert body["days_remaining"] == 9
+    assert body["at_risk"] is True
+    assert body["state"] == "under_review"
+    assert body["decision_deadline"] == (case.received_on + timedelta(days=45)).isoformat()
+    assert body["open_review_task"] == {
+        "task_id": str(TASK),
+        "reason": "adverse_determination",
+        "allowed_actions": ["approve_denial", "override_to_approve"],
+    }
+    assert (young_body["days_remaining"], young_body["at_risk"]) == (42, False)
+    assert young_body["open_review_task"] is None
+    assert (decided_body["days_remaining"], decided_body["at_risk"]) == (None, False)
+    assert own.status_code == 200
+    assert date.fromisoformat(own.json()["received_on"]) == case.received_on
+
+
+def test_FR_001_11_get_case_of_other_household_returns_404(harness: CaseApiHarness) -> None:
+    other = put_case(harness, household=uuid.uuid4())
+
+    harness.sign_in(Role.applicant)
+    foreign = harness.client.get(f"/api/v1/cases/{other.case_id}")
+    missing = harness.client.get(f"/api/v1/cases/{uuid.uuid4()}")
+    harness.sign_out()
+    anonymous = harness.client.get(f"/api/v1/cases/{other.case_id}")
+
+    assert foreign.status_code == 404
+    assert foreign.json()["error"]["code"] == "not_found"
+    # Another household's case looks exactly like a case that does not exist.
+    assert missing.status_code == 404
+    assert foreign.json()["error"]["message"] == missing.json()["error"]["message"]
+    assert anonymous.status_code == 401

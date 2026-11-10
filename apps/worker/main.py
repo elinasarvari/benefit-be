@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import sys
+from typing import Any
 
 import structlog
 from temporalio.client import Client
@@ -15,13 +16,22 @@ from temporalio.contrib.pydantic import pydantic_data_converter
 from temporalio.worker import Worker
 
 from apps.worker.activities.agent_step import AgentStepActivities, smoke_tool
+from apps.worker.activities.case_record import CaseRecordActivities
+from apps.worker.activities.determination import DeterminationActivities
 from apps.worker.activities.smoke import smoke_step
+from apps.worker.activities.verification import verify_documents
 from apps.worker.health import WorkerState, worker_checks
 from apps.worker.interceptors import ContextInterceptor
+from apps.worker.repositories.cases import CaseRepository
+from apps.worker.repositories.stub_results import MongoStubResults
+from apps.worker.workflows.case import CaseWorkflow
 from apps.worker.workflows.smoke import SmokeWorkflow
-from packages.platform.clock import SystemClock
+from packages.platform.audit import MongoAuditWriter
+from packages.platform.clock import Clock, SystemClock
 from packages.platform.health import serve_health
 from packages.platform.logging import configure_logging
+from packages.platform.mongo import Client as MongoClient
+from packages.platform.mongo import make_client
 from packages.platform.settings import Settings, load_settings
 
 log = structlog.get_logger()
@@ -47,19 +57,37 @@ async def connect_with_backoff(settings: Settings) -> Client:
             delay = min(delay * 2, MAX_BACKOFF_S)
 
 
+WORKFLOWS = [SmokeWorkflow, CaseWorkflow]
+
+
+def build_activities(settings: Settings, clock: Clock, mongo: MongoClient) -> list[Any]:
+    """Every activity, built once per worker process (TW-12)."""
+    agent_steps = AgentStepActivities(settings, clock, smoke_tool(settings, clock))
+    audit = MongoAuditWriter(mongo, settings.MONGO_AUDIT_DB)
+    case_record = CaseRecordActivities(CaseRepository(mongo, settings.MONGO_DB, audit))
+    # Stub until 003 (research R1): the seeded result of each household.
+    determination = DeterminationActivities(MongoStubResults(mongo, settings.MONGO_DB))
+    return [
+        smoke_step,
+        agent_steps.run,
+        case_record.record_case_change,
+        verify_documents,
+        determination.determine_eligibility,
+    ]
+
+
 async def run_worker(settings: Settings) -> None:
     state = WorkerState()
     server = serve_health("worker", settings.WORKER_HEALTH_PORT, worker_checks(settings, state))
     health_task = asyncio.create_task(server.serve())
+    mongo = make_client(settings.MONGO_URL_APP.get_secret_value())
     try:
         client = await connect_with_backoff(settings)
-        clock = SystemClock()
-        agent_steps = AgentStepActivities(settings, clock, smoke_tool(settings, clock))
         worker = Worker(
             client,
             task_queue=settings.TEMPORAL_TASK_QUEUE,
-            workflows=[SmokeWorkflow],
-            activities=[smoke_step, agent_steps.run],
+            workflows=WORKFLOWS,
+            activities=build_activities(settings, SystemClock(), mongo),
             interceptors=[ContextInterceptor()],
         )
         state.polling = True
@@ -69,6 +97,7 @@ async def run_worker(settings: Settings) -> None:
         state.polling = False
         server.should_exit = True
         await health_task
+        await mongo.close()
 
 
 def main() -> int:

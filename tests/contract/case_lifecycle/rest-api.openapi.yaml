@@ -1,0 +1,95 @@
+# Assumes ADR-001-05 Option A (Needs decision). If Option B is chosen, this file moves to 006.
+# Merged into repos/benefit-be/openapi/openapi.json by scripts/export_openapi.py (FR-000-26, PL-3).
+openapi: 3.1.0
+info:
+  title: Benefit Case API (001 additions)
+  version: "1"
+paths:
+  /api/v1/applications:
+    post:
+      operationId: submitApplication
+      summary: Submit an application; opens one case per submission reference (FR-001-01, FR-001-23)
+      security: [{session: []}]
+      description: Role applicant; household taken from the session, never from the body.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/ApplicationSubmission"}
+      responses:
+        "201": {description: Case opened, content: {application/json: {schema: {$ref: "#/components/schemas/CaseStatus"}}}}
+        "200": {description: Same submission reference already opened this case, content: {application/json: {schema: {$ref: "#/components/schemas/CaseStatus"}}}}
+        "409": {description: "Refused: error.code=conflict, reason in error.fields[0].type (household_has_open_case | household_has_coverage | submission_reference_in_use)", content: {application/json: {schema: {$ref: "#/components/schemas/ErrorEnvelope"}}}}
+        "401": {description: Not signed in}
+        "403": {description: Role not allowed}
+        "503": {description: Temporal unavailable; retry the same submission}
+  /api/v1/cases/{case_id}:
+    get:
+      operationId: getCase
+      summary: Case state, deadline, days remaining and at-risk flag (FR-001-11)
+      security: [{session: []}]
+      description: Applicant (own household only), caseworker, supervisor.
+      parameters:
+        - {name: case_id, in: path, required: true, schema: {type: string, format: uuid}}
+      responses:
+        "200": {description: OK, content: {application/json: {schema: {$ref: "#/components/schemas/CaseStatus"}}}}
+        "404": {description: Not found or not visible to the caller}
+  /api/v1/cases/{case_id}/review-tasks/{task_id}/actions:
+    post:
+      operationId: submitReviewAction
+      summary: Caseworker action on an open review task (FR-001-07, FR-001-09, FR-001-20)
+      security: [{session: []}]
+      description: Role caseworker or supervisor. Pre-checked against the allowed_actions query (ADR-001-04 fallback).
+      parameters:
+        - {name: case_id, in: path, required: true, schema: {type: string, format: uuid}}
+        - {name: task_id, in: path, required: true, schema: {type: string, format: uuid}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/ReviewActionBody"}
+      responses:
+        "202": {description: Action accepted and signalled}
+        "409": {description: Action not allowed for this task or state; recorded as rejected}
+        "422": {description: Reason missing for an override}
+        "403": {description: Role not allowed}
+components:
+  securitySchemes:
+    session: {type: apiKey, in: cookie, name: session}
+  schemas:
+    ApplicationSubmission:
+      type: object
+      additionalProperties: false
+      required: [submission_reference]
+      properties:
+        submission_reference: {type: string, format: uuid}
+        # Application form fields are FR-006-07 (006); 001 needs only the reference.
+    ReviewActionBody:
+      type: object
+      additionalProperties: false
+      required: [action, request_id]
+      properties:
+        action: {type: string, enum: [approve_denial, override_to_approve]}
+        reason: {type: [string, "null"], maxLength: 500}
+        request_id: {type: string, format: uuid}
+    CaseStatus:
+      type: object
+      required: [case_id, state, received_on, decision_deadline, at_risk]
+      properties:
+        case_id: {type: string, format: uuid}
+        state: {type: string, enum: [submitted, verifying, awaiting_applicant, determining, under_review, decided]}
+        received_on: {type: string, format: date}
+        decision_deadline: {type: string, format: date}
+        days_remaining: {type: [integer, "null"]}
+        at_risk: {type: boolean}
+        outcome: {type: [string, "null"], enum: [approved, denied, null]}
+        denial_reason: {type: [string, "null"], enum: [income_over_limit, other_rule_not_met, missing_information, null]}
+        open_review_task:
+          type: [object, "null"]
+          properties:
+            task_id: {type: string, format: uuid}
+            reason: {type: string}
+            allowed_actions: {type: array, items: {type: string}}
+    ErrorEnvelope:
+      description: Existing error format (packages/domain/errors.py, specs/000 research R11)
+      type: object

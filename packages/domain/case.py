@@ -1,0 +1,395 @@
+"""Case lifecycle contract (001): enums and models shared by the API, the worker and storage.
+
+See specs/001-case-lifecycle/data-model.md and contracts/. Changing anything here needs
+agreement from every lane that uses it (BA-8).
+"""
+
+from __future__ import annotations
+
+from datetime import date, datetime
+from enum import StrEnum
+from typing import Literal, Self
+from uuid import UUID, uuid5
+
+from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+# Namespace for deterministic case IDs (ADR-001-02). Never change it: stored case IDs depend on it.
+SUBMISSION_NS = UUID("6f1c2a54-0b7e-5d3a-9c41-2e8f0d5b7a13")
+
+AT_RISK_DAYS = 10
+REASON_MAX_LENGTH = 500
+
+
+def case_id_for(submission_reference: str | UUID) -> UUID:
+    """One submission reference always maps to the same case ID (FR-001-01)."""
+    return uuid5(SUBMISSION_NS, str(submission_reference))
+
+
+def workflow_id_for(case_id: UUID) -> str:
+    return f"case-{case_id}"
+
+
+# --- Enums -----------------------------------------------------------------------------------
+
+
+class CaseType(StrEnum):
+    application = "application"
+    redetermination = "redetermination"
+
+
+class CaseState(StrEnum):
+    submitted = "submitted"
+    verifying = "verifying"
+    awaiting_applicant = "awaiting_applicant"
+    determining = "determining"
+    under_review = "under_review"
+    decided = "decided"
+
+
+class CaseOutcome(StrEnum):
+    approved = "approved"
+    denied = "denied"
+    # Reserved for 007.
+    renewed_automatically = "renewed_automatically"
+    renewed_after_response = "renewed_after_response"
+    ended_by_caseworker = "ended_by_caseworker"
+
+
+class DenialReason(StrEnum):
+    income_over_limit = "income_over_limit"
+    other_rule_not_met = "other_rule_not_met"
+    missing_information = "missing_information"
+
+
+class ReviewReason(StrEnum):
+    adverse_determination = "adverse_determination"
+    cannot_determine = "cannot_determine"
+    notice_approval = "notice_approval"
+    verification_review = "verification_review"
+    missed_response_deadline = "missed_response_deadline"
+    explanation_review = "explanation_review"
+
+
+class CaseworkerActionType(StrEnum):
+    # 001 handles only the first two; the rest are FR-010-01.
+    approve_denial = "approve_denial"
+    override_to_approve = "override_to_approve"
+    request_information = "request_information"
+    correct_value = "correct_value"
+    dismiss_finding = "dismiss_finding"
+    accept_findings = "accept_findings"
+    approve = "approve"
+    edit_and_approve = "edit_and_approve"
+    deny_for_missing_information = "deny_for_missing_information"
+    extend_15_days = "extend_15_days"
+    continue_with_held_data = "continue_with_held_data"
+
+
+class CaseEventKind(StrEnum):
+    state_changed = "state_changed"
+    review_task_opened = "review_task_opened"
+    caseworker_action = "caseworker_action"
+    action_rejected = "action_rejected"
+    notice_requested = "notice_requested"
+    coverage_started = "coverage_started"
+    demo_action = "demo_action"
+
+
+class DeterminationOutcome(StrEnum):
+    eligible = "eligible"
+    ineligible = "ineligible"
+    cannot_determine = "cannot_determine"
+
+
+class SubmissionRefusal(StrEnum):
+    household_has_open_case = "household_has_open_case"
+    household_has_coverage = "household_has_coverage"
+    # The reference already opened a case of another household; that case is never revealed.
+    submission_reference_in_use = "submission_reference_in_use"
+
+
+class CoverageStatus(StrEnum):
+    active = "active"
+    continued_pending_review = "continued_pending_review"
+    renewed = "renewed"
+    ended = "ended"
+
+
+class EventActorType(StrEnum):
+    system = "system"
+    user = "user"
+
+
+class ReviewTaskStatus(StrEnum):
+    open = "open"
+    resolved = "resolved"
+
+
+class ActionOutcome(StrEnum):
+    applied = "applied"
+    rejected = "rejected"
+
+
+class NoticeType(StrEnum):
+    # 001 values; the full enum is FR-011-06.
+    approval = "approval"
+    denial = "denial"
+
+
+# --- Models ----------------------------------------------------------------------------------
+
+
+class _Model(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+
+class _Document(BaseModel):
+    """A stored document: `_id` in MongoDB, `id` in Python."""
+
+    model_config = ConfigDict(extra="forbid", validate_by_name=True, validate_by_alias=True)
+
+
+class CaseClock(_Model):
+    """Case clock (ADR-001-03): case time = case_start + (real - real_start) * scale + offset."""
+
+    real_start: datetime
+    case_start: datetime
+    scale: int = Field(ge=1, description="1, or 1440 in the demo profile")
+    offset_seconds: int = 0
+
+
+class CaseStart(_Model):
+    """Input of CaseWorkflow."""
+
+    case_id: UUID
+    household_id: UUID
+    case_type: CaseType
+    submission_reference: str = Field(max_length=128)
+    received_at: datetime
+    clock: CaseClock
+
+
+class CaseOverride(_Model):
+    reviewer_id: UUID
+    reason: str = Field(min_length=1, max_length=REASON_MAX_LENGTH)
+    determination_id: UUID | None
+
+
+class Case(_Document):
+    id: UUID = Field(alias="_id")
+    household_id: UUID
+    case_id: UUID
+    case_type: CaseType
+    submission_reference: str = Field(max_length=128)
+    state: CaseState
+    open: bool
+    received_on: date
+    decision_deadline: date
+    clock: CaseClock
+    outcome: CaseOutcome | None = None
+    denial_reason: DenialReason | None = None
+    override: CaseOverride | None = None
+    decided_on: date | None = None
+    last_seq: int = Field(default=0, ge=0)
+    created_at: datetime
+    updated_at: datetime
+
+
+class CaseEvent(_Document):
+    id: UUID = Field(alias="_id")
+    case_id: UUID
+    household_id: UUID
+    seq: int = Field(ge=1)
+    kind: CaseEventKind
+    from_state: CaseState | None = None
+    to_state: CaseState | None = None
+    case_time: datetime
+    real_time: datetime
+    actor_type: EventActorType
+    actor_id: UUID | None = None
+    # Enum-backed code, never free text.
+    reason_code: str = Field(max_length=64, pattern=r"^[a-z0-9_]+$")
+    review_task_id: UUID | None = None
+    created_at: datetime
+
+
+class ReviewEvidence(_Model):
+    determination_id: UUID | None = None
+    missing_items: list[str] = Field(default_factory=list)
+    failed_rules: list[str] = Field(default_factory=list)
+
+
+class ReviewResolution(_Model):
+    action: CaseworkerActionType
+    reviewer_id: UUID
+    reason: str | None = Field(default=None, max_length=REASON_MAX_LENGTH)
+    case_time: datetime
+
+
+class ReviewTask(_Document):
+    id: UUID = Field(alias="_id")
+    case_id: UUID
+    household_id: UUID
+    reason: ReviewReason
+    evidence: ReviewEvidence
+    allowed_actions: list[CaseworkerActionType]
+    status: ReviewTaskStatus
+    opened_case_time: datetime
+    opened_real_time: datetime
+    reminder: bool = False
+    escalated: bool = False
+    resolution: ReviewResolution | None = None
+
+
+class CaseworkerActionRequest(_Model):
+    """Signal payload `caseworker_action`. `reason` is never logged (PL-11)."""
+
+    task_id: UUID
+    action: CaseworkerActionType
+    reviewer_id: UUID
+    reason: str | None = Field(default=None, max_length=REASON_MAX_LENGTH, repr=False)
+    request_id: UUID
+
+    @model_validator(mode="after")
+    def _override_needs_reason(self) -> Self:
+        if self.action is CaseworkerActionType.override_to_approve and not (
+            self.reason and self.reason.strip()
+        ):
+            raise ValueError("override_to_approve requires a reason")
+        return self
+
+
+class CaseworkerAction(_Document):
+    id: UUID = Field(alias="_id", description="= request_id (idempotent)")
+    case_id: UUID
+    household_id: UUID
+    task_id: UUID
+    action: CaseworkerActionType
+    reviewer_id: UUID
+    reason: str | None = Field(default=None, max_length=REASON_MAX_LENGTH, repr=False)
+    outcome: ActionOutcome
+    case_time: datetime
+    real_time: datetime
+
+
+class CoveragePeriod(_Document):
+    id: UUID = Field(alias="_id", description='= uuid5(case_id, "coverage")')
+    household_id: UUID
+    case_id: UUID
+    start_date: date
+    end_date: date
+    status: CoverageStatus
+
+
+class NoticeRequest(_Document):
+    id: UUID = Field(alias="_id", description="= uuid5(case_id, notice_type)")
+    case_id: UUID
+    household_id: UUID
+    notice_type: NoticeType
+    status: Literal["requested"] = "requested"
+    requested_case_time: datetime
+
+
+class Determination(_Model):
+    """Minimal determination; 003 owns the full shape. 001 never changes it (FR-001-20)."""
+
+    determination_id: UUID
+    outcome: DeterminationOutcome
+    reason_code: DenialReason | None = None
+    failed_rules: list[DenialReason] = Field(default_factory=list)
+    missing_items: list[str] = Field(default_factory=list)
+    as_of_date: date
+
+
+class VerificationRequest(_Model):
+    case_id: UUID
+    household_id: UUID
+
+
+class VerificationOutcome(_Model):
+    complete: bool
+    needs_review: bool
+
+
+class DeterminationRequest(_Model):
+    case_id: UUID
+    household_id: UUID
+    as_of_date: date
+
+
+class CaseUpdate(_Model):
+    """Fields of `cases` a change sets; None = unchanged."""
+
+    state: CaseState
+    open: bool = True
+    outcome: CaseOutcome | None = None
+    denial_reason: DenialReason | None = None
+    override: CaseOverride | None = None
+    decided_on: date | None = None
+
+
+class CaseChange(_Model):
+    """Input of `record_case_change`: everything one step writes, in one transaction (KD-10)."""
+
+    case_id: UUID
+    household_id: UUID
+    seq: int = Field(ge=1)
+    event: CaseEvent
+    case_update: CaseUpdate | None = None
+    review_task: ReviewTask | None = None
+    action: CaseworkerAction | None = None
+    coverage: CoveragePeriod | None = None
+    notice: NoticeRequest | None = None
+
+    @model_validator(mode="after")
+    def _parts_belong_to_case(self) -> Self:
+        if self.event.seq != self.seq:
+            raise ValueError("event.seq must equal seq")
+        parts = [self.event, self.review_task, self.action, self.coverage, self.notice]
+        for part in parts:
+            if part is not None and (
+                part.case_id != self.case_id or part.household_id != self.household_id
+            ):
+                raise ValueError("every part must belong to the same case and household")
+        return self
+
+
+class OpenReviewTask(_Model):
+    task_id: UUID
+    reason: ReviewReason
+    allowed_actions: list[CaseworkerActionType]
+
+
+class CaseStatus(_Model):
+    """Query result `status` and API response. `at_risk` is derived from `days_remaining`."""
+
+    # Every field is always present in a response, so the response schema lists them as required.
+    model_config = ConfigDict(extra="forbid", json_schema_serialization_defaults_required=True)
+
+    case_id: UUID
+    state: CaseState
+    received_on: date
+    decision_deadline: date
+    days_remaining: int | None = Field(default=None, description="null once decided")
+    at_risk: bool = False
+    outcome: CaseOutcome | None = None
+    denial_reason: DenialReason | None = None
+    open_review_task: OpenReviewTask | None = None
+
+    @model_validator(mode="after")
+    def _derive_at_risk(self) -> Self:
+        self.at_risk = self.days_remaining is not None and self.days_remaining <= AT_RISK_DAYS
+        return self
+
+
+class AllowedActions(_Model):
+    """Query result `allowed_actions`; empty when no task is open."""
+
+    task_id: UUID | None = None
+    actions: list[CaseworkerActionType] = Field(default_factory=list)
+
+
+class ApplicationSubmission(_Model):
+    """API body; the household comes from the session, never from the body."""
+
+    submission_reference: UUID

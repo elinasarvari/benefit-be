@@ -25,6 +25,26 @@ ROOT = Path(__file__).parents[2]
 PROJECTION = {"_id": 1, "case_id": 1, "household_id": 1}
 
 
+def case_document(case_id: uuid.UUID, household_id: uuid.UUID) -> dict[str, object]:
+    """A case that passes the 0002_case_lifecycle validator."""
+    now = datetime(2026, 3, 17, 15, tzinfo=UTC)
+    return {
+        "_id": case_id,
+        "household_id": household_id,
+        "case_id": case_id,
+        "case_type": "application",
+        "submission_reference": f"sub-{case_id}",
+        "state": "submitted",
+        "open": True,
+        "received_on": datetime(2026, 3, 17, tzinfo=UTC),
+        "decision_deadline": datetime(2026, 5, 1, tzinfo=UTC),
+        "clock": {"real_start": now, "case_start": now, "scale": 1, "offset_seconds": 0},
+        "last_seq": 0,
+        "created_at": now,
+        "updated_at": now,
+    }
+
+
 def principal(role: Role, household: uuid.UUID | None) -> Principal:
     return Principal(
         user_id=uuid.uuid4(),
@@ -40,10 +60,7 @@ async def cases(integration_settings: Settings, owner_url: str):  # type: ignore
         db = client[integration_settings.MONGO_DB]
         await db["cases"].delete_many({})
         await db["cases"].insert_many(
-            [
-                {"_id": CASE_A, "household_id": HOUSEHOLD_A, "case_id": CASE_A},
-                {"_id": CASE_B, "household_id": HOUSEHOLD_B, "case_id": CASE_B},
-            ]
+            [case_document(CASE_A, HOUSEHOLD_A), case_document(CASE_B, HOUSEHOLD_B)]
         )
         yield db
         await db["cases"].delete_many({})

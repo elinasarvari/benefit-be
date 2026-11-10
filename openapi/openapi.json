@@ -1,6 +1,146 @@
 {
   "components": {
     "schemas": {
+      "ApplicationSubmission": {
+        "additionalProperties": false,
+        "description": "API body; the household comes from the session, never from the body.",
+        "properties": {
+          "submission_reference": {
+            "format": "uuid",
+            "title": "Submission Reference",
+            "type": "string"
+          }
+        },
+        "required": [
+          "submission_reference"
+        ],
+        "title": "ApplicationSubmission",
+        "type": "object"
+      },
+      "CaseOutcome": {
+        "enum": [
+          "approved",
+          "denied",
+          "renewed_automatically",
+          "renewed_after_response",
+          "ended_by_caseworker"
+        ],
+        "title": "CaseOutcome",
+        "type": "string"
+      },
+      "CaseState": {
+        "enum": [
+          "submitted",
+          "verifying",
+          "awaiting_applicant",
+          "determining",
+          "under_review",
+          "decided"
+        ],
+        "title": "CaseState",
+        "type": "string"
+      },
+      "CaseStatus": {
+        "additionalProperties": false,
+        "description": "Query result `status` and API response. `at_risk` is derived from `days_remaining`.",
+        "properties": {
+          "at_risk": {
+            "default": false,
+            "title": "At Risk",
+            "type": "boolean"
+          },
+          "case_id": {
+            "format": "uuid",
+            "title": "Case Id",
+            "type": "string"
+          },
+          "days_remaining": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "null once decided",
+            "title": "Days Remaining"
+          },
+          "decision_deadline": {
+            "format": "date",
+            "title": "Decision Deadline",
+            "type": "string"
+          },
+          "denial_reason": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DenialReason"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "open_review_task": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OpenReviewTask"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "outcome": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CaseOutcome"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "received_on": {
+            "format": "date",
+            "title": "Received On",
+            "type": "string"
+          },
+          "state": {
+            "$ref": "#/components/schemas/CaseState"
+          }
+        },
+        "required": [
+          "case_id",
+          "state",
+          "received_on",
+          "decision_deadline",
+          "days_remaining",
+          "at_risk",
+          "outcome",
+          "denial_reason",
+          "open_review_task"
+        ],
+        "title": "CaseStatus",
+        "type": "object"
+      },
+      "CaseworkerActionType": {
+        "enum": [
+          "approve_denial",
+          "override_to_approve",
+          "request_information",
+          "correct_value",
+          "dismiss_finding",
+          "accept_findings",
+          "approve",
+          "edit_and_approve",
+          "deny_for_missing_information",
+          "extend_15_days",
+          "continue_with_held_data"
+        ],
+        "title": "CaseworkerActionType",
+        "type": "string"
+      },
       "CheckStatus": {
         "enum": [
           "ok",
@@ -8,6 +148,15 @@
           "degraded"
         ],
         "title": "CheckStatus",
+        "type": "string"
+      },
+      "DenialReason": {
+        "enum": [
+          "income_over_limit",
+          "other_rule_not_met",
+          "missing_information"
+        ],
+        "title": "DenialReason",
         "type": "string"
       },
       "ErrorBody": {
@@ -145,6 +294,33 @@
         "title": "LoginRequest",
         "type": "object"
       },
+      "OpenReviewTask": {
+        "additionalProperties": false,
+        "properties": {
+          "allowed_actions": {
+            "items": {
+              "$ref": "#/components/schemas/CaseworkerActionType"
+            },
+            "title": "Allowed Actions",
+            "type": "array"
+          },
+          "reason": {
+            "$ref": "#/components/schemas/ReviewReason"
+          },
+          "task_id": {
+            "format": "uuid",
+            "title": "Task Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "task_id",
+          "reason",
+          "allowed_actions"
+        ],
+        "title": "OpenReviewTask",
+        "type": "object"
+      },
       "ReadinessCheck": {
         "properties": {
           "name": {
@@ -199,6 +375,55 @@
           "not_ready"
         ],
         "title": "ReadinessStatus",
+        "type": "string"
+      },
+      "ReviewActionBody": {
+        "additionalProperties": false,
+        "description": "A caseworker's action. The reviewer comes from the session, never from the body.\n\n`reason` is never logged or echoed in an error (PL-11).",
+        "properties": {
+          "action": {
+            "enum": [
+              "approve_denial",
+              "override_to_approve"
+            ],
+            "title": "Action",
+            "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "request_id": {
+            "format": "uuid",
+            "title": "Request Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "action",
+          "request_id"
+        ],
+        "title": "ReviewActionBody",
+        "type": "object"
+      },
+      "ReviewReason": {
+        "enum": [
+          "adverse_determination",
+          "cannot_determine",
+          "notice_approval",
+          "verification_review",
+          "missed_response_deadline",
+          "explanation_review"
+        ],
+        "title": "ReviewReason",
         "type": "string"
       },
       "Role": {
@@ -284,6 +509,97 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/v1/applications": {
+      "post": {
+        "operationId": "submitApplication",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApplicationSubmission"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaseStatus"
+                }
+              }
+            },
+            "description": "Same submission reference already opened this case"
+          },
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaseStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not signed in"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Role not allowed"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Refused: error.code=conflict, reason in error.fields[0].type (household_has_open_case | household_has_coverage | submission_reference_in_use)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "validation_failed"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Temporal unavailable; retry the same submission"
+          }
+        },
+        "summary": "Submit an application; opens one case per submission reference",
+        "tags": [
+          "cases"
+        ]
+      }
+    },
     "/api/v1/auth/login": {
       "post": {
         "operationId": "login",
@@ -408,6 +724,185 @@
         "summary": "Me",
         "tags": [
           "auth"
+        ]
+      }
+    },
+    "/api/v1/cases/{case_id}": {
+      "get": {
+        "operationId": "getCase",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "case_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Case Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaseStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not signed in"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Role not allowed"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not found or not visible to the caller"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "validation_failed"
+          }
+        },
+        "summary": "Case state, deadline, days remaining and at-risk flag",
+        "tags": [
+          "cases"
+        ]
+      }
+    },
+    "/api/v1/cases/{case_id}/review-tasks/{task_id}/actions": {
+      "post": {
+        "operationId": "submitReviewAction",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "case_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Case Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "task_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Task Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewActionBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Action accepted and signalled"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not signed in"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Role not allowed"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not found or not visible to the caller"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Action not allowed for this task or state; recorded as rejected"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "validation_failed"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Temporal unavailable"
+          }
+        },
+        "summary": "Caseworker action on an open review task",
+        "tags": [
+          "cases"
         ]
       }
     },

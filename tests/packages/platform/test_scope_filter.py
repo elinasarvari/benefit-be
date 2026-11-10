@@ -14,6 +14,7 @@ from packages.platform.scope import (
     Scope,
     ScopeKind,
     ScopeRequired,
+    insert_one,
     scoped_filter,
 )
 
@@ -76,7 +77,81 @@ def test_FR_000_19_system_scope_is_limited_to_its_case_and_to_case_collections()
 
 def test_FR_000_19_registry_covers_every_collection_the_migrations_create() -> None:
     baseline = importlib.import_module("db.migrations.versions.0001_baseline")
-    created = set(baseline.SCOPED_WITH_CASE) | set(baseline.SCOPED_HOUSEHOLD_ONLY)
+    case_lifecycle = importlib.import_module("db.migrations.versions.0002_case_lifecycle")
+    created = (
+        set(baseline.SCOPED_WITH_CASE)
+        | set(baseline.SCOPED_HOUSEHOLD_ONLY)
+        | set(case_lifecycle.CREATED_HOUSEHOLD_ONLY)
+    )
 
     assert created == set(HOUSEHOLD_SCOPED)
     assert set(baseline.UNSCOPED) <= set(UNSCOPED)
+
+
+# --- Worker scope (001, ADR-001-06) ------------------------------------------------------------
+
+C1, H1 = uuid.uuid4(), uuid.uuid4()
+
+
+def test_FR_001_23_worker_scope_filters_coverage_by_household_and_refuses_households() -> None:
+    worker = Scope.for_worker(C1, H1)
+
+    assert worker.kind is ScopeKind.worker
+    assert scoped_filter(worker, "coverage_periods", {"end_date": {"$gte": "2026-03-17"}}) == {
+        "$and": [{"end_date": {"$gte": "2026-03-17"}}, {"household_id": H1}]
+    }
+    assert scoped_filter(worker, "household_stub_results") == {"household_id": H1}
+    for forbidden in ("households", "users"):
+        with pytest.raises(Forbidden):
+            scoped_filter(worker, forbidden)
+    with pytest.raises(Forbidden):
+        scoped_filter(Scope(ScopeKind.worker, case_id=C1), "coverage_periods")
+
+
+def test_FR_001_10_worker_scope_filters_case_collections_by_case_id() -> None:
+    worker = Scope.for_worker(C1, H1)
+
+    for collection in (
+        "cases",
+        "case_events",
+        "review_tasks",
+        "caseworker_actions",
+        "outbox",
+    ):
+        assert scoped_filter(worker, collection) == {"case_id": C1}
+        assert scoped_filter(worker, collection, {"seq": 3}) == {
+            "$and": [{"seq": 3}, {"case_id": C1}]
+        }
+    with pytest.raises(Forbidden):
+        scoped_filter(Scope(ScopeKind.worker, household_id=H1), "cases")
+
+
+# --- Scoped insert -----------------------------------------------------------------------------
+
+
+class _FakeCollection:
+    def __init__(self) -> None:
+        self.inserted: list[dict[str, object]] = []
+
+    async def insert_one(self, document: dict[str, object], session: object = None) -> None:
+        self.inserted.append(document)
+
+
+class _FakeDb(dict[str, _FakeCollection]):
+    def __missing__(self, name: str) -> _FakeCollection:
+        self[name] = _FakeCollection()
+        return self[name]
+
+
+async def test_FR_000_19_insert_refuses_a_document_outside_the_scope() -> None:
+    db = _FakeDb()
+    own = {"_id": CASE, "case_id": CASE, "household_id": HOUSEHOLD}
+    other = {"_id": uuid.uuid4(), "case_id": uuid.uuid4(), "household_id": uuid.uuid4()}
+
+    await insert_one(db, "cases", scope_for(Role.applicant), own)  # type: ignore[arg-type]
+    with pytest.raises(Forbidden):
+        await insert_one(db, "cases", scope_for(Role.applicant), other)  # type: ignore[arg-type]
+    with pytest.raises(ScopeRequired):
+        await insert_one(db, "cases", None, own)  # type: ignore[arg-type]
+
+    assert db["cases"].inserted == [own]

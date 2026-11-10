@@ -1,0 +1,704 @@
+{
+  "Determination": {
+    "$defs": {
+      "EligibilityResult": {
+        "enum": [
+          "eligible",
+          "ineligible",
+          "cannot_determine"
+        ],
+        "title": "EligibilityResult",
+        "type": "string"
+      },
+      "MissingItem": {
+        "additionalProperties": false,
+        "properties": {
+          "item": {
+            "title": "Item",
+            "type": "string"
+          },
+          "job_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Job Id"
+          },
+          "member_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Member Id"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "item",
+          "reason"
+        ],
+        "title": "MissingItem",
+        "type": "object"
+      },
+      "RuleId": {
+        "enum": [
+          "ELIG-01",
+          "ELIG-02",
+          "ELIG-03",
+          "ELIG-04",
+          "ELIG-05",
+          "ELIG-06"
+        ],
+        "title": "RuleId",
+        "type": "string"
+      },
+      "RuleOutcome": {
+        "enum": [
+          "pass",
+          "fail",
+          "missing"
+        ],
+        "title": "RuleOutcome",
+        "type": "string"
+      },
+      "RuleResult": {
+        "additionalProperties": false,
+        "properties": {
+          "inputs": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Inputs",
+            "type": "object"
+          },
+          "missing": {
+            "default": [],
+            "items": {
+              "$ref": "#/$defs/MissingItem"
+            },
+            "title": "Missing",
+            "type": "array"
+          },
+          "outcome": {
+            "$ref": "#/$defs/RuleOutcome"
+          },
+          "policy_ref": {
+            "title": "Policy Ref",
+            "type": "string"
+          },
+          "rule_id": {
+            "$ref": "#/$defs/RuleId"
+          },
+          "threshold": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Threshold"
+          }
+        },
+        "required": [
+          "rule_id",
+          "outcome",
+          "inputs",
+          "threshold",
+          "policy_ref"
+        ],
+        "title": "RuleResult",
+        "type": "object"
+      }
+    },
+    "additionalProperties": false,
+    "description": "Engine output. `rule_results` are in rule-ID order.",
+    "properties": {
+      "as_of_date": {
+        "format": "date",
+        "title": "As Of Date",
+        "type": "string"
+      },
+      "engine_version": {
+        "title": "Engine Version",
+        "type": "string"
+      },
+      "household_monthly_income": {
+        "anyOf": [
+          {
+            "type": "number"
+          },
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Household Monthly Income"
+      },
+      "household_size": {
+        "minimum": 0,
+        "title": "Household Size",
+        "type": "integer"
+      },
+      "missing_items": {
+        "items": {
+          "$ref": "#/$defs/MissingItem"
+        },
+        "title": "Missing Items",
+        "type": "array"
+      },
+      "monthly_income_limit": {
+        "anyOf": [
+          {
+            "type": "number"
+          },
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Monthly Income Limit"
+      },
+      "result": {
+        "$ref": "#/$defs/EligibilityResult"
+      },
+      "rule_results": {
+        "items": {
+          "$ref": "#/$defs/RuleResult"
+        },
+        "title": "Rule Results",
+        "type": "array"
+      },
+      "rule_set_id": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Rule Set Id"
+      },
+      "rule_set_version": {
+        "anyOf": [
+          {
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Rule Set Version"
+      }
+    },
+    "required": [
+      "result",
+      "as_of_date",
+      "rule_set_id",
+      "rule_set_version",
+      "engine_version",
+      "household_size",
+      "household_monthly_income",
+      "monthly_income_limit",
+      "rule_results",
+      "missing_items"
+    ],
+    "title": "Determination",
+    "type": "object"
+  },
+  "DeterminationRecord": {
+    "$defs": {
+      "Determination": {
+        "additionalProperties": false,
+        "description": "Engine output. `rule_results` are in rule-ID order.",
+        "properties": {
+          "as_of_date": {
+            "format": "date",
+            "title": "As Of Date",
+            "type": "string"
+          },
+          "engine_version": {
+            "title": "Engine Version",
+            "type": "string"
+          },
+          "household_monthly_income": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Household Monthly Income"
+          },
+          "household_size": {
+            "minimum": 0,
+            "title": "Household Size",
+            "type": "integer"
+          },
+          "missing_items": {
+            "items": {
+              "$ref": "#/$defs/MissingItem"
+            },
+            "title": "Missing Items",
+            "type": "array"
+          },
+          "monthly_income_limit": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Monthly Income Limit"
+          },
+          "result": {
+            "$ref": "#/$defs/EligibilityResult"
+          },
+          "rule_results": {
+            "items": {
+              "$ref": "#/$defs/RuleResult"
+            },
+            "title": "Rule Results",
+            "type": "array"
+          },
+          "rule_set_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rule Set Id"
+          },
+          "rule_set_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rule Set Version"
+          }
+        },
+        "required": [
+          "result",
+          "as_of_date",
+          "rule_set_id",
+          "rule_set_version",
+          "engine_version",
+          "household_size",
+          "household_monthly_income",
+          "monthly_income_limit",
+          "rule_results",
+          "missing_items"
+        ],
+        "title": "Determination",
+        "type": "object"
+      },
+      "EligibilityResult": {
+        "enum": [
+          "eligible",
+          "ineligible",
+          "cannot_determine"
+        ],
+        "title": "EligibilityResult",
+        "type": "string"
+      },
+      "MissingItem": {
+        "additionalProperties": false,
+        "properties": {
+          "item": {
+            "title": "Item",
+            "type": "string"
+          },
+          "job_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Job Id"
+          },
+          "member_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Member Id"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "item",
+          "reason"
+        ],
+        "title": "MissingItem",
+        "type": "object"
+      },
+      "RuleId": {
+        "enum": [
+          "ELIG-01",
+          "ELIG-02",
+          "ELIG-03",
+          "ELIG-04",
+          "ELIG-05",
+          "ELIG-06"
+        ],
+        "title": "RuleId",
+        "type": "string"
+      },
+      "RuleOutcome": {
+        "enum": [
+          "pass",
+          "fail",
+          "missing"
+        ],
+        "title": "RuleOutcome",
+        "type": "string"
+      },
+      "RuleResult": {
+        "additionalProperties": false,
+        "properties": {
+          "inputs": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Inputs",
+            "type": "object"
+          },
+          "missing": {
+            "default": [],
+            "items": {
+              "$ref": "#/$defs/MissingItem"
+            },
+            "title": "Missing",
+            "type": "array"
+          },
+          "outcome": {
+            "$ref": "#/$defs/RuleOutcome"
+          },
+          "policy_ref": {
+            "title": "Policy Ref",
+            "type": "string"
+          },
+          "rule_id": {
+            "$ref": "#/$defs/RuleId"
+          },
+          "threshold": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Threshold"
+          }
+        },
+        "required": [
+          "rule_id",
+          "outcome",
+          "inputs",
+          "threshold",
+          "policy_ref"
+        ],
+        "title": "RuleResult",
+        "type": "object"
+      }
+    },
+    "additionalProperties": false,
+    "properties": {
+      "case_id": {
+        "format": "uuid",
+        "title": "Case Id",
+        "type": "string"
+      },
+      "determination": {
+        "$ref": "#/$defs/Determination"
+      },
+      "determination_id": {
+        "format": "uuid",
+        "title": "Determination Id",
+        "type": "string"
+      },
+      "household_id": {
+        "format": "uuid",
+        "title": "Household Id",
+        "type": "string"
+      },
+      "recorded_at": {
+        "format": "date-time",
+        "title": "Recorded At",
+        "type": "string"
+      },
+      "snapshot_id": {
+        "format": "uuid",
+        "title": "Snapshot Id",
+        "type": "string"
+      }
+    },
+    "required": [
+      "determination_id",
+      "household_id",
+      "case_id",
+      "snapshot_id",
+      "recorded_at",
+      "determination"
+    ],
+    "title": "DeterminationRecord",
+    "type": "object"
+  },
+  "HouseholdSnapshot": {
+    "$defs": {
+      "JobIncome": {
+        "additionalProperties": false,
+        "description": "An empty `stubs` list means income is missing for that job.",
+        "properties": {
+          "job_id": {
+            "format": "uuid",
+            "title": "Job Id",
+            "type": "string"
+          },
+          "stubs": {
+            "items": {
+              "$ref": "#/$defs/PayStubFact"
+            },
+            "title": "Stubs",
+            "type": "array"
+          }
+        },
+        "required": [
+          "job_id",
+          "stubs"
+        ],
+        "title": "JobIncome",
+        "type": "object"
+      },
+      "MemberFacts": {
+        "additionalProperties": false,
+        "description": "What the rules engine sees about a member: no names.",
+        "properties": {
+          "address_state": {
+            "pattern": "^[A-Z]{2}$",
+            "title": "Address State",
+            "type": "string"
+          },
+          "citizenship_attested": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Citizenship Attested"
+          },
+          "date_of_birth": {
+            "format": "date",
+            "title": "Date Of Birth",
+            "type": "string"
+          },
+          "declared_zero_income": {
+            "title": "Declared Zero Income",
+            "type": "boolean"
+          },
+          "identity_verified": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Identity Verified"
+          },
+          "jobs": {
+            "items": {
+              "$ref": "#/$defs/JobIncome"
+            },
+            "title": "Jobs",
+            "type": "array"
+          },
+          "medicare_entitled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Medicare Entitled"
+          },
+          "member_id": {
+            "format": "uuid",
+            "title": "Member Id",
+            "type": "string"
+          },
+          "relationship": {
+            "enum": [
+              "self",
+              "spouse",
+              "child",
+              "other"
+            ],
+            "title": "Relationship",
+            "type": "string"
+          }
+        },
+        "required": [
+          "member_id",
+          "relationship",
+          "date_of_birth",
+          "address_state",
+          "citizenship_attested",
+          "medicare_entitled",
+          "identity_verified",
+          "declared_zero_income",
+          "jobs"
+        ],
+        "title": "MemberFacts",
+        "type": "object"
+      },
+      "PayFrequency": {
+        "enum": [
+          "weekly",
+          "biweekly",
+          "semimonthly",
+          "monthly"
+        ],
+        "title": "PayFrequency",
+        "type": "string"
+      },
+      "PayStubFact": {
+        "additionalProperties": false,
+        "properties": {
+          "document_id": {
+            "format": "uuid",
+            "title": "Document Id",
+            "type": "string"
+          },
+          "frequency": {
+            "$ref": "#/$defs/PayFrequency"
+          },
+          "gross_pay": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Gross Pay"
+          },
+          "pay_date": {
+            "format": "date",
+            "title": "Pay Date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "document_id",
+          "pay_date",
+          "frequency",
+          "gross_pay"
+        ],
+        "title": "PayStubFact",
+        "type": "object"
+      }
+    },
+    "additionalProperties": false,
+    "properties": {
+      "captured_at": {
+        "format": "date-time",
+        "title": "Captured At",
+        "type": "string"
+      },
+      "case_id": {
+        "format": "uuid",
+        "title": "Case Id",
+        "type": "string"
+      },
+      "household_id": {
+        "format": "uuid",
+        "title": "Household Id",
+        "type": "string"
+      },
+      "members": {
+        "items": {
+          "$ref": "#/$defs/MemberFacts"
+        },
+        "title": "Members",
+        "type": "array"
+      },
+      "snapshot_id": {
+        "format": "uuid",
+        "title": "Snapshot Id",
+        "type": "string"
+      }
+    },
+    "required": [
+      "snapshot_id",
+      "household_id",
+      "case_id",
+      "captured_at",
+      "members"
+    ],
+    "title": "HouseholdSnapshot",
+    "type": "object"
+  }
+}

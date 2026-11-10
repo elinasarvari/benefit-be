@@ -3,4 +3,4 @@ useDefault = true
 
 [allowlist]
 description = "Synthetic placeholders only; .env is git-ignored and never scanned for commit."
-paths = ['''\.env\.example$''']
+paths = ['''\.env\.example$''', '''db/seeds/data/known_answers\.json$''']

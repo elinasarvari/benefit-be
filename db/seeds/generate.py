@@ -18,12 +18,16 @@ from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 
 from db.client import make_client
-from db.seeds.ids import HOUSEHOLD_A, HOUSEHOLD_B, SEED
+from db.seeds.documents import write_documents
+from db.seeds.households import YEARS, build_dataset
+from db.seeds.ids import SEED
+from db.seeds.records import to_document
+from db.seeds.rule_sets import seed_rule_sets
 from db.seeds.users import SeedError, seed_users
 from packages.platform.settings import Settings, load_settings
 from packages.platform.synthetic import stamp_pdf
 
-GENERATOR_VERSION = "0.1.0"
+GENERATOR_VERSION = "0.2.0"
 GENERATED_DIR = Path(__file__).resolve().parent / "generated"
 SEEDED_AT = datetime(2026, 1, 1, tzinfo=UTC)
 
@@ -59,9 +63,28 @@ async def seed(settings: Settings) -> None:
     client = make_client(settings.MONGO_URL_OWNER.get_secret_value())
     try:
         db = client[settings.MONGO_DB]
+        dataset = build_dataset(settings.SEED_ANCHOR_DATE)
+        write_documents(dataset, GENERATED_DIR / "documents")
         await db["households"].insert_many(
-            [{"_id": hid, "created_at": SEEDED_AT} for hid in (HOUSEHOLD_A, HOUSEHOLD_B)]
+            [
+                {
+                    "_id": h.household_id,
+                    "created_at": SEEDED_AT,
+                    "address_state": h.address_state,
+                    "seed_key": h.seed_key,
+                }
+                for h in dataset.households
+            ]
         )
+        await db["household_members"].insert_many(
+            [
+                to_document(m, "member_id")
+                for h in dataset.households
+                for y in YEARS
+                for m in h.years[y].members
+            ]
+        )
+        await seed_rule_sets(db)
         await seed_users(db, password, SEEDED_AT)
         await db["_meta"].replace_one(
             {"_id": "dataset"},
@@ -71,6 +94,9 @@ async def seed(settings: Settings) -> None:
                 "seed": SEED,
                 "generator_version": GENERATOR_VERSION,
                 "generated_at": SEEDED_AT,
+                "anchor_date": datetime.combine(
+                    settings.SEED_ANCHOR_DATE, datetime.min.time(), tzinfo=UTC
+                ),
             },
             upsert=True,
         )

@@ -44,4 +44,4 @@ async def test_migration_runner_records_and_skips_applied_versions(
         recorded = [doc["_id"] async for doc in ctx.db[MIGRATIONS_COLLECTION].find()]
 
     assert again == []
-    assert recorded == ["0001_baseline"]
+    assert recorded == ["0001_baseline", "0002_eligibility"]

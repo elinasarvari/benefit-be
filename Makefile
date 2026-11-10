@@ -6,7 +6,7 @@ PYTEST_ARGS ?=
 export BENEFIT_FE_DIR
 
 .PHONY: doctor setup mongo-up mongo-down dev prod seed reset health e2e lint typecheck test test-unit test-workflow test-contract \
-	test-integration test-api test-stack smoke-ai openapi openapi-check check
+	test-integration test-api test-stack smoke-ai openapi openapi-check check verify mutation-audit
 
 doctor:
 	@python3 scripts/doctor.py
@@ -99,3 +99,11 @@ openapi-check: openapi
 check: lint typecheck test-unit test-workflow test-contract openapi-check
 	gitleaks detect --no-banner
 	uv run pip-audit
+
+# Every CI job's checks in both repos, one table. Starts MongoDB, Temporal and the stack as needed.
+verify:
+	uv run python -m scripts.verify
+
+# Plants known bugs one at a time and checks the tests fail for each. Slow: runs real tests.
+mutation-audit:
+	uv run python -m scripts.mutation_audit

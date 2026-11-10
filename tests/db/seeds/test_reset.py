@@ -32,7 +32,6 @@ async def test_FR_000_02_reset_restores_seeded_counts_and_markers(
     assert marker["synthetic"] is True
 
 
-@pytest.mark.unit
 def test_FR_001_16_seed_covers_every_stub_result_with_synthetic_households() -> None:
     documents = household_documents()
 

@@ -28,6 +28,8 @@ Open http://localhost:5173. The synthetic-data banner is on every screen.
 | `make mongo-up` / `mongo-down` | Start or stop the local MongoDB (single-node replica set with authentication) |
 | `make check` | Lint, types, tests, contract and secrets checks (what CI runs) |
 | `make test` | Every test level that needs no running stack |
+| `make verify` | Every CI job's checks in both repos, one table (starts MongoDB, Temporal and the stack as needed; logs in `.data/verify/`) |
+| `make mutation-audit` | Plants known bugs one at a time and checks the tests fail for each, so a passing test run means something |
 | `make e2e` | The Playwright suite in `benefit-fe` against the running stack |
 
 ### Components and ports

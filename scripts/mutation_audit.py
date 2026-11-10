@@ -164,8 +164,8 @@ MUTANTS = [
         "FR-000-13 retries are bounded",
         BE,
         "packages/platform/resilience.py",
-        "range(1, max_attempts + 1)",
-        "range(1, max_attempts + 2)",
+        "if attempt == max_attempts:",
+        "if attempt == max_attempts + 1:",
         "uv run pytest -q -x tests/packages/platform/test_resilience.py",
     ),
     Mutant(
@@ -239,13 +239,19 @@ def audit(mutant: Mutant) -> tuple[str, str]:
     return "KILLED", ""
 
 
+def selected() -> list[Mutant]:
+    """All mutants, or only those whose requirement contains an argument (for quick reruns)."""
+    words = sys.argv[1:]
+    return [m for m in MUTANTS if not words or any(w in m.requirement for w in words)]
+
+
 def main() -> int:
     services = Services()
     rows: list[tuple[str, str, str]] = []
     try:
         services.ensure_mongo()
         services.ensure_temporal()
-        for mutant in MUTANTS:
+        for mutant in selected():
             status, note = audit(mutant)
             rows.append((status, mutant.requirement, note))
             print(f"{status:<9} {mutant.requirement}  {note}", flush=True)

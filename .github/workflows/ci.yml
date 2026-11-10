@@ -3,7 +3,8 @@ name: CI
 on:
   pull_request:
   push:
-    branches: [main]
+    # Feature branches run CI on push too, so a branch can be checked before its PR exists.
+    branches: [main, "feature/**"]
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}

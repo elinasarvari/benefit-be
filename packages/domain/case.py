@@ -24,9 +24,12 @@ from packages.domain.review import RejectionCode as RejectionCode
 from packages.domain.review import ReviewReason as ReviewReason
 from packages.domain.review import ReviewTask as ReviewTask
 from packages.domain.review import ReviewTaskStatus as ReviewTaskStatus
+from packages.domain.waits import PendingTimer
 
 # Namespace for deterministic case IDs (ADR-001-02). Never change it: stored case IDs depend on it.
 SUBMISSION_NS = UUID("6f1c2a54-0b7e-5d3a-9c41-2e8f0d5b7a13")
+# Namespace for redetermination case IDs (TW-6, FR-007-07). Never change it either.
+REDETERMINATION_NS = UUID("3d8e5b0c-7a41-5f62-8c19-4b2e6d0a9f37")
 
 AT_RISK_DAYS = 10
 REASON_MAX_LENGTH = 500
@@ -39,6 +42,12 @@ def case_id_for(submission_reference: str | UUID) -> UUID:
 
 def workflow_id_for(case_id: UUID) -> str:
     return f"case-{case_id}"
+
+
+def redetermination_case_id(household_id: UUID, coverage_period_id: UUID) -> UUID:
+    """One coverage period has one redetermination: starting it again gives the same case and
+    workflow ID, so Temporal refuses a second run (TW-6, FR-007-07)."""
+    return uuid5(REDETERMINATION_NS, f"{household_id}:{coverage_period_id}")
 
 
 # --- Enums -----------------------------------------------------------------------------------
@@ -109,9 +118,15 @@ class EventActorType(StrEnum):
 
 
 class NoticeType(StrEnum):
-    # 001 values; the full enum is FR-011-06.
+    """FR-011-06 (MVP: no redetermination form, 007b is dropped). Which types wait for a
+    caseworker is `NOTICE_NEEDS_APPROVAL` in `packages/domain/notice.py`."""
+
     approval = "approval"
     denial = "denial"
+    automatic_renewal = "automatic_renewal"
+    renewal_after_response = "renewal_after_response"
+    coverage_ended = "coverage_ended"
+    request_for_information = "request_for_information"
 
 
 # The actions CaseWorkflow carries out itself until it composes 010's review loop (010 T018): the
@@ -166,6 +181,14 @@ class CaseStart(_Model):
     submission_reference: str = Field(max_length=128)
     received_at: datetime
     clock: CaseClock
+    # The coverage period a redetermination renews (FR-007-05); None for an application.
+    coverage_period_id: UUID | None = None
+
+    @model_validator(mode="after")
+    def _coverage_period_for_redetermination(self) -> Self:
+        if (self.case_type is CaseType.redetermination) != (self.coverage_period_id is not None):
+            raise ValueError("coverage_period_id is required for, and only for, a redetermination")
+        return self
 
 
 class CaseOverride(_Model):
@@ -241,16 +264,6 @@ class Determination(_Model):
     as_of_date: date
 
 
-class VerificationRequest(_Model):
-    case_id: UUID
-    household_id: UUID
-
-
-class VerificationOutcome(_Model):
-    complete: bool
-    needs_review: bool
-
-
 class DeterminationRequest(_Model):
     case_id: UUID
     household_id: UUID
@@ -315,6 +328,8 @@ class CaseStatus(_Model):
     outcome: CaseOutcome | None = None
     denial_reason: DenialReason | None = None
     open_review_task: OpenReviewTask | None = None
+    # The next timer "Advance clock" would fire (FR-011-05); None when nothing is pending.
+    pending_timer: PendingTimer | None = None
 
     @model_validator(mode="after")
     def _derive_at_risk(self) -> Self:

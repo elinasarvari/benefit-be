@@ -6,7 +6,7 @@ from datetime import date
 from temporalio.testing import ActivityEnvironment
 
 from apps.worker.activities.verification import verify_documents
-from packages.domain.case import VerificationRequest
+from packages.domain.verification import VerificationRequest
 
 # Synthetic IDs. The determination stub of 001 is gone: the real activity is tested in
 # test_determination.py (ADR-003-02).
@@ -16,9 +16,12 @@ AS_OF = date(2026, 3, 17)
 
 
 async def test_FR_001_16_stub_verification_is_complete_without_review() -> None:
-    request = VerificationRequest(case_id=CASE_ID, household_id=HOUSEHOLD)
+    request = VerificationRequest(case_id=CASE_ID, household_id=HOUSEHOLD, as_of_date=AS_OF)
 
     outcome = await ActivityEnvironment().run(verify_documents, request)
 
     assert outcome.complete is True
     assert outcome.needs_review is False
+    assert outcome.case_id == CASE_ID
+    assert outcome.findings == [] and outcome.missing_items == []
+    assert outcome.identity_verified is None  # the stub never checks identity

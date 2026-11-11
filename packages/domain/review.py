@@ -46,6 +46,9 @@ class ReviewCause(StrEnum):
     unreadable_document = "unreadable_document"
     different_person = "different_person"
     identity_mismatch = "identity_mismatch"
+    # 002 MVP causes (FR-002-16): typed pay stub details, no AI.
+    income_mismatch = "income_mismatch"
+    conflicting_stubs = "conflicting_stubs"
     income_source_mismatch = "income_source_mismatch"
     missing_citation = "missing_citation"
     verification_unavailable = "verification_unavailable"

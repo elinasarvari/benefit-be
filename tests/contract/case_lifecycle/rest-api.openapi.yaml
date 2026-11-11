@@ -143,7 +143,7 @@ components:
         request_id: {type: string, format: uuid}
     CaseStatus:
       type: object
-      required: [case_id, state, received_on, decision_deadline, days_remaining, at_risk, outcome, denial_reason, open_review_task]
+      required: [case_id, state, received_on, decision_deadline, days_remaining, at_risk, outcome, denial_reason, open_review_task, pending_timer]
       properties:
         case_id: {type: string, format: uuid}
         state: {$ref: "#/components/schemas/CaseState"}
@@ -160,6 +160,13 @@ components:
             task_id: {type: string, format: uuid}
             reason: {type: string}
             allowed_actions: {type: array, items: {type: string}}
+        pending_timer:
+          type: [object, "null"]
+          description: "MVP contracts (011, FR-011-05): the next timer Advance clock fires"
+          required: [name, due_case_time]
+          properties:
+            name: {type: string, enum: [response_deadline, review_reminder, review_escalation, coverage_end]}
+            due_case_time: {type: string, format: date-time}
     CaseDetail:
       allOf:
         - {$ref: "#/components/schemas/CaseStatus"}

@@ -9,7 +9,17 @@ from fastapi import APIRouter, FastAPI
 from apps.api.dependencies.auth import SESSION_COOKIE
 from apps.api.errors import register_error_handlers
 from apps.api.middleware.request_context import RequestContextMiddleware
-from apps.api.routers import applications, auth, cases, health
+from apps.api.routers import (
+    applications,
+    auth,
+    cases,
+    documents,
+    explanations,
+    health,
+    households,
+    metrics,
+    notices,
+)
 from packages.platform.logging import configure_logging
 from packages.platform.mongo import make_client
 from packages.platform.settings import Settings, load_settings
@@ -55,6 +65,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     api.include_router(auth.router)
     api.include_router(applications.router)
     api.include_router(cases.router)
+    # MVP contract stubs (specs/mvp-contracts.md section 3); each feature fills in its own.
+    api.include_router(documents.router)
+    api.include_router(explanations.router)
+    api.include_router(notices.router)
+    api.include_router(households.router)
+    api.include_router(metrics.router)
     app.include_router(api)
     _declare_security(app)
     return app

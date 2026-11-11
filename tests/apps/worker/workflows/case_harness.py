@@ -31,9 +31,8 @@ from packages.domain.case import (
     Determination,
     DeterminationOutcome,
     DeterminationRequest,
-    VerificationOutcome,
-    VerificationRequest,
 )
+from packages.domain.verification import VerificationRequest, VerificationResult
 
 TASK_QUEUE = "test-case"
 # Noon in Chicago on 17 March 2026, so a few skipped days never cross a date boundary by DST.
@@ -94,11 +93,11 @@ class Stubs:
                 await self.on_change(change)
 
         @activity.defn(name="verify_documents")
-        async def verify_documents(request: VerificationRequest) -> VerificationOutcome:
+        async def verify_documents(request: VerificationRequest) -> VerificationResult:
             self.verify_calls += 1
             if self.on_verify is not None:
                 await self.on_verify(self.verify_calls)
-            return VerificationOutcome(complete=True, needs_review=False)
+            return VerificationResult(complete=True, needs_review=False)
 
         @activity.defn(name="determine_eligibility")
         async def determine_eligibility(request: DeterminationRequest) -> Determination:

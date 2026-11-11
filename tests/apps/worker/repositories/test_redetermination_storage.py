@@ -132,7 +132,8 @@ async def test_FR_007_01_open_due_skips_household_with_open_case_until_next_day(
 
     db = client[integration_settings.MONGO_DB]
     await db["cases"].update_one(
-        {"_id": opened.start.case_id, "household_id": household_id}, {"$set": {"state": "decided", "open": False}}
+        {"_id": opened.start.case_id, "household_id": household_id},
+        {"$set": {"state": "decided", "open": False}},
     )
     next_day = await due.open_case(second, T0 + timedelta(days=1), 1)
     assert next_day.opened is Opened.created

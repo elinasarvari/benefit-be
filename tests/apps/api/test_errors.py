@@ -23,6 +23,7 @@ STATUS_FOR_CODE = {
     ErrorCode.validation_failed: 422,
     ErrorCode.internal_error: 500,
     ErrorCode.dependency_unavailable: 503,
+    ErrorCode.not_implemented: 501,
 }
 
 

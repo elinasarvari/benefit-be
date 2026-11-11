@@ -31,8 +31,19 @@ SCOPED_WITH_CASE = (
     "agent_runs",
     "notice_drafts",
     "tool_calls",
+    # MVP contracts (migration 0006)
+    "pay_stub_details",
+    "verification_results",
+    "notices",
+    "applicant_responses",
+    "decision_explanations",
 )
-SCOPED_HOUSEHOLD_ONLY = ("household_members", "coverage_periods", "seeded_verifications")
+SCOPED_HOUSEHOLD_ONLY = (
+    "household_members",
+    "coverage_periods",
+    "seeded_verifications",
+    "reference_records",
+)
 HOUSEHOLD_SCOPED = frozenset(SCOPED_WITH_CASE + SCOPED_HOUSEHOLD_ONLY)
 # Collections with no household data. Any name not in this registry is refused, so a typo or a
 # new collection can never skip the household filter by accident.

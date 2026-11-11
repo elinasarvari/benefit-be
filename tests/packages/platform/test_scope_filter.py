@@ -79,12 +79,15 @@ def test_FR_000_19_registry_covers_every_collection_the_migrations_create() -> N
     baseline = importlib.import_module("db.migrations.versions.0001_baseline")
     case_lifecycle = importlib.import_module("db.migrations.versions.0003_case_lifecycle")
     case_screens = importlib.import_module("db.migrations.versions.0004_case_screens")
+    mvp = importlib.import_module("db.migrations.versions.0006_mvp")
     created = (
         set(baseline.SCOPED_WITH_CASE)
         | set(baseline.SCOPED_HOUSEHOLD_ONLY)
         | set(case_lifecycle.CREATED_HOUSEHOLD_ONLY)
         | {case_screens.APPLICATIONS}
         | {"seeded_verifications"}  # created by 0005 (ADR-003-03)
+        | set(mvp.CREATED_WITH_CASE)
+        | set(mvp.CREATED_HOUSEHOLD_ONLY)
     ) - {"household_stub_results"}  # dropped by 0005
 
     assert created == set(HOUSEHOLD_SCOPED)

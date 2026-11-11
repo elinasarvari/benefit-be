@@ -18,6 +18,24 @@
         "title": "ActionType",
         "type": "string"
       },
+      "ApplicantHistory": {
+        "additionalProperties": false,
+        "description": "FR-004-16: every coverage period's decision with the explanation given at the time.",
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/HistoryEntry"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "ApplicantHistory",
+        "type": "object"
+      },
       "ApplicantMember": {
         "additionalProperties": false,
         "properties": {
@@ -197,6 +215,16 @@
               }
             ]
           },
+          "pending_timer": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PendingTimer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "received_on": {
             "format": "date",
             "title": "Received On",
@@ -216,6 +244,7 @@
           "outcome",
           "denial_reason",
           "open_review_task",
+          "pending_timer",
           "case_type",
           "coverage_period",
           "override",
@@ -444,6 +473,16 @@
               }
             ]
           },
+          "pending_timer": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PendingTimer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "received_on": {
             "format": "date",
             "title": "Received On",
@@ -462,7 +501,8 @@
           "at_risk",
           "outcome",
           "denial_reason",
-          "open_review_task"
+          "open_review_task",
+          "pending_timer"
         ],
         "title": "CaseStatus",
         "type": "object"
@@ -536,6 +576,36 @@
         "title": "CaseType",
         "type": "string"
       },
+      "CaseVerification": {
+        "additionalProperties": false,
+        "description": "The case page's documents section (FR-002-18).",
+        "properties": {
+          "documents": {
+            "items": {
+              "$ref": "#/components/schemas/DocumentView"
+            },
+            "title": "Documents",
+            "type": "array"
+          },
+          "result": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/VerificationResult"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "null until the check has run"
+          }
+        },
+        "required": [
+          "documents",
+          "result"
+        ],
+        "title": "CaseVerification",
+        "type": "object"
+      },
       "CheckStatus": {
         "enum": [
           "ok",
@@ -545,6 +615,39 @@
         "title": "CheckStatus",
         "type": "string"
       },
+      "Citation": {
+        "additionalProperties": false,
+        "properties": {
+          "manual_version": {
+            "format": "date",
+            "title": "Manual Version",
+            "type": "string"
+          },
+          "rule_id": {
+            "$ref": "#/components/schemas/RuleId"
+          },
+          "section": {
+            "maxLength": 20,
+            "minLength": 1,
+            "title": "Section",
+            "type": "string"
+          },
+          "title": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "rule_id",
+          "section",
+          "title",
+          "manual_version"
+        ],
+        "title": "Citation",
+        "type": "object"
+      },
       "CitizenshipStatus": {
         "enum": [
           "us_citizen",
@@ -553,6 +656,95 @@
         ],
         "title": "CitizenshipStatus",
         "type": "string"
+      },
+      "Correction": {
+        "additionalProperties": false,
+        "description": "A caseworker's correction of one entered detail (FR-002-19).",
+        "properties": {
+          "corrected_at": {
+            "format": "date-time",
+            "title": "Corrected At",
+            "type": "string"
+          },
+          "field": {
+            "pattern": "^(employee_name|employer|frequency|gross_pay|pay_date)$",
+            "title": "Field",
+            "type": "string"
+          },
+          "new_value": {
+            "title": "New Value",
+            "type": "string"
+          },
+          "old_value": {
+            "title": "Old Value",
+            "type": "string"
+          },
+          "reason": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          },
+          "reviewer_id": {
+            "format": "uuid",
+            "title": "Reviewer Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "field",
+          "old_value",
+          "new_value",
+          "reviewer_id",
+          "reason",
+          "corrected_at"
+        ],
+        "title": "Correction",
+        "type": "object"
+      },
+      "CoveragePeriodView": {
+        "additionalProperties": false,
+        "properties": {
+          "coverage_period_id": {
+            "format": "uuid",
+            "title": "Coverage Period Id",
+            "type": "string"
+          },
+          "end_date": {
+            "format": "date",
+            "title": "End Date",
+            "type": "string"
+          },
+          "running_redetermination_case_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Running Redetermination Case Id"
+          },
+          "start_date": {
+            "format": "date",
+            "title": "Start Date",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/CoverageStatus"
+          }
+        },
+        "required": [
+          "coverage_period_id",
+          "start_date",
+          "end_date",
+          "status",
+          "running_redetermination_case_id"
+        ],
+        "title": "CoveragePeriodView",
+        "type": "object"
       },
       "CoverageStatus": {
         "enum": [
@@ -587,6 +779,74 @@
           "status"
         ],
         "title": "CoverageSummary",
+        "type": "object"
+      },
+      "DecisionExplanation": {
+        "additionalProperties": false,
+        "description": "One audience's explanation, stored in `decision_explanations` as built (FR-004-13).",
+        "properties": {
+          "audience": {
+            "$ref": "#/components/schemas/ExplanationAudience"
+          },
+          "built_at": {
+            "format": "date-time",
+            "title": "Built At",
+            "type": "string"
+          },
+          "case_id": {
+            "format": "uuid",
+            "title": "Case Id",
+            "type": "string"
+          },
+          "citations": {
+            "items": {
+              "$ref": "#/components/schemas/Citation"
+            },
+            "title": "Citations",
+            "type": "array"
+          },
+          "determination_id": {
+            "format": "uuid",
+            "title": "Determination Id",
+            "type": "string"
+          },
+          "household_id": {
+            "format": "uuid",
+            "title": "Household Id",
+            "type": "string"
+          },
+          "result": {
+            "$ref": "#/components/schemas/DeterminationOutcome"
+          },
+          "synthetic": {
+            "anyOf": [
+              {
+                "const": true,
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Synthetic"
+          },
+          "text": {
+            "maxLength": 10000,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "determination_id",
+          "case_id",
+          "household_id",
+          "audience",
+          "result",
+          "text",
+          "built_at"
+        ],
+        "title": "DecisionExplanation",
         "type": "object"
       },
       "DenialReason": {
@@ -742,6 +1002,84 @@
         "title": "DeterminationView",
         "type": "object"
       },
+      "Dismissal": {
+        "additionalProperties": false,
+        "properties": {
+          "dismissed_at": {
+            "format": "date-time",
+            "title": "Dismissed At",
+            "type": "string"
+          },
+          "reason": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          },
+          "reviewer_id": {
+            "format": "uuid",
+            "title": "Reviewer Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reviewer_id",
+          "reason",
+          "dismissed_at"
+        ],
+        "title": "Dismissal",
+        "type": "object"
+      },
+      "DocumentCreated": {
+        "additionalProperties": false,
+        "properties": {
+          "document_id": {
+            "format": "uuid",
+            "title": "Document Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "document_id"
+        ],
+        "title": "DocumentCreated",
+        "type": "object"
+      },
+      "DocumentView": {
+        "additionalProperties": false,
+        "properties": {
+          "content_type": {
+            "enum": [
+              "application/pdf",
+              "image/png",
+              "image/jpeg"
+            ],
+            "title": "Content Type",
+            "type": "string"
+          },
+          "details": {
+            "$ref": "#/components/schemas/PayStubDetails"
+          },
+          "document_id": {
+            "format": "uuid",
+            "title": "Document Id",
+            "type": "string"
+          },
+          "uploaded_at": {
+            "format": "date-time",
+            "title": "Uploaded At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "document_id",
+          "content_type",
+          "uploaded_at",
+          "details"
+        ],
+        "title": "DocumentView",
+        "type": "object"
+      },
       "ErrorBody": {
         "additionalProperties": false,
         "properties": {
@@ -795,7 +1133,8 @@
           "conflict",
           "validation_failed",
           "internal_error",
-          "dependency_unavailable"
+          "dependency_unavailable",
+          "not_implemented"
         ],
         "title": "ErrorCode",
         "type": "string"
@@ -820,6 +1159,31 @@
         "title": "EventActorType",
         "type": "string"
       },
+      "ExplanationAudience": {
+        "enum": [
+          "applicant",
+          "caseworker"
+        ],
+        "title": "ExplanationAudience",
+        "type": "string"
+      },
+      "ExplanationList": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/DecisionExplanation"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "ExplanationList",
+        "type": "object"
+      },
       "FieldError": {
         "properties": {
           "field": {
@@ -842,6 +1206,118 @@
         ],
         "title": "FieldError",
         "type": "object"
+      },
+      "Finding": {
+        "additionalProperties": false,
+        "description": "One discrepancy (FR-002-03, FR-002-14, FR-002-24). `finding_id` is derived from the case,\ncause, member and job, so running the check again gives the same ID (FR-002-23).",
+        "properties": {
+          "cause": {
+            "$ref": "#/components/schemas/FindingCause"
+          },
+          "conversion": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "e.g. \"weekly 300.00 x 52 / 12 = 1300.00\"",
+            "title": "Conversion"
+          },
+          "declared_monthly": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Declared Monthly"
+          },
+          "dismissed": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Dismissal"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "document_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Document Id"
+          },
+          "documented_monthly": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Documented Monthly"
+          },
+          "finding_id": {
+            "format": "uuid",
+            "title": "Finding Id",
+            "type": "string"
+          },
+          "job_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Job Id"
+          },
+          "member_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Member Id"
+          }
+        },
+        "required": [
+          "finding_id",
+          "cause"
+        ],
+        "title": "Finding",
+        "type": "object"
+      },
+      "FindingCause": {
+        "description": "FR-002-16: the causes a \"Verification review\" task shows.",
+        "enum": [
+          "income_mismatch",
+          "different_person",
+          "conflicting_stubs",
+          "identity_mismatch"
+        ],
+        "title": "FindingCause",
+        "type": "string"
       },
       "HealthReport": {
         "properties": {
@@ -871,6 +1347,157 @@
           "version"
         ],
         "title": "HealthReport",
+        "type": "object"
+      },
+      "HistoryEntry": {
+        "additionalProperties": false,
+        "properties": {
+          "case_id": {
+            "format": "uuid",
+            "title": "Case Id",
+            "type": "string"
+          },
+          "case_type": {
+            "$ref": "#/components/schemas/CaseType"
+          },
+          "coverage_end": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Coverage End"
+          },
+          "coverage_start": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Coverage Start"
+          },
+          "decided_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decided On"
+          },
+          "explanation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DecisionExplanation"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Applicant explanation"
+          },
+          "outcome": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CaseOutcome"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "case_id",
+          "case_type",
+          "outcome",
+          "decided_on",
+          "coverage_start",
+          "coverage_end",
+          "explanation"
+        ],
+        "title": "HistoryEntry",
+        "type": "object"
+      },
+      "HouseholdMemberView": {
+        "additionalProperties": false,
+        "properties": {
+          "date_of_birth": {
+            "format": "date",
+            "title": "Date Of Birth",
+            "type": "string"
+          },
+          "full_name": {
+            "title": "Full Name",
+            "type": "string"
+          },
+          "member_id": {
+            "format": "uuid",
+            "title": "Member Id",
+            "type": "string"
+          },
+          "relationship": {
+            "$ref": "#/components/schemas/Relationship"
+          }
+        },
+        "required": [
+          "member_id",
+          "full_name",
+          "date_of_birth",
+          "relationship"
+        ],
+        "title": "HouseholdMemberView",
+        "type": "object"
+      },
+      "HouseholdView": {
+        "additionalProperties": false,
+        "description": "FR-007-18: members, coverage periods and cases.",
+        "properties": {
+          "cases": {
+            "items": {
+              "$ref": "#/components/schemas/CaseSummary"
+            },
+            "title": "Cases",
+            "type": "array"
+          },
+          "coverage_periods": {
+            "items": {
+              "$ref": "#/components/schemas/CoveragePeriodView"
+            },
+            "title": "Coverage Periods",
+            "type": "array"
+          },
+          "household_id": {
+            "format": "uuid",
+            "title": "Household Id",
+            "type": "string"
+          },
+          "members": {
+            "items": {
+              "$ref": "#/components/schemas/HouseholdMemberView"
+            },
+            "title": "Members",
+            "type": "array"
+          }
+        },
+        "required": [
+          "household_id",
+          "members",
+          "coverage_periods",
+          "cases"
+        ],
+        "title": "HouseholdView",
         "type": "object"
       },
       "IllinoisAddress": {
@@ -977,6 +1604,114 @@
         "title": "LoginRequest",
         "type": "object"
       },
+      "MetricName": {
+        "enum": [
+          "average_days_to_decision",
+          "share_decided_within_deadline",
+          "automatic_renewal_rate",
+          "procedural_denial_rate"
+        ],
+        "title": "MetricName",
+        "type": "string"
+      },
+      "MetricStatus": {
+        "enum": [
+          "ok",
+          "no_data",
+          "not_applicable"
+        ],
+        "title": "MetricStatus",
+        "type": "string"
+      },
+      "MetricValue": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "$ref": "#/components/schemas/MetricName"
+          },
+          "status": {
+            "$ref": "#/components/schemas/MetricStatus"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "null unless status is ok (FR-008-06)",
+            "title": "Value"
+          }
+        },
+        "required": [
+          "name",
+          "value",
+          "status"
+        ],
+        "title": "MetricValue",
+        "type": "object"
+      },
+      "MetricsReport": {
+        "additionalProperties": false,
+        "description": "FR-008-09: metric values only, no names or identifiers.",
+        "properties": {
+          "metrics": {
+            "items": {
+              "$ref": "#/components/schemas/MetricValue"
+            },
+            "title": "Metrics",
+            "type": "array"
+          },
+          "month": {
+            "pattern": "^\\d{4}-\\d{2}$",
+            "title": "Month",
+            "type": "string"
+          }
+        },
+        "required": [
+          "month",
+          "metrics"
+        ],
+        "title": "MetricsReport",
+        "type": "object"
+      },
+      "MissingDocument": {
+        "additionalProperties": false,
+        "description": "Named apart from 003's `MissingItem`, which the OpenAPI document already uses.",
+        "properties": {
+          "job_id": {
+            "format": "uuid",
+            "title": "Job Id",
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/MissingDocumentKind"
+          },
+          "member_id": {
+            "format": "uuid",
+            "title": "Member Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "member_id",
+          "job_id",
+          "kind"
+        ],
+        "title": "MissingDocument",
+        "type": "object"
+      },
+      "MissingDocumentKind": {
+        "description": "FR-002-15: a declared job with no pay stub, or whose latest stub is too old.",
+        "enum": [
+          "no_stub",
+          "stub_too_old"
+        ],
+        "title": "MissingDocumentKind",
+        "type": "string"
+      },
       "MissingItem": {
         "additionalProperties": false,
         "properties": {
@@ -1020,6 +1755,171 @@
           "reason"
         ],
         "title": "MissingItem",
+        "type": "object"
+      },
+      "NoticeList": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/NoticeSummary"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "NoticeList",
+        "type": "object"
+      },
+      "NoticeSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "delivered_at": {
+            "format": "date-time",
+            "title": "Delivered At",
+            "type": "string"
+          },
+          "notice_id": {
+            "format": "uuid",
+            "title": "Notice Id",
+            "type": "string"
+          },
+          "notice_type": {
+            "$ref": "#/components/schemas/NoticeType"
+          }
+        },
+        "required": [
+          "notice_id",
+          "notice_type",
+          "delivered_at"
+        ],
+        "title": "NoticeSummary",
+        "type": "object"
+      },
+      "NoticeType": {
+        "description": "FR-011-06 (MVP: no redetermination form, 007b is dropped). Which types wait for a\ncaseworker is `NOTICE_NEEDS_APPROVAL` in `packages/domain/notice.py`.",
+        "enum": [
+          "approval",
+          "denial",
+          "automatic_renewal",
+          "renewal_after_response",
+          "coverage_ended",
+          "request_for_information"
+        ],
+        "title": "NoticeType",
+        "type": "string"
+      },
+      "NoticeView": {
+        "additionalProperties": false,
+        "properties": {
+          "case_id": {
+            "format": "uuid",
+            "title": "Case Id",
+            "type": "string"
+          },
+          "delivered_at": {
+            "format": "date-time",
+            "title": "Delivered At",
+            "type": "string"
+          },
+          "due_case_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due Case Date"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/RequestedItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "notice_id": {
+            "format": "uuid",
+            "title": "Notice Id",
+            "type": "string"
+          },
+          "notice_type": {
+            "$ref": "#/components/schemas/NoticeType"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "notice_id",
+          "case_id",
+          "notice_type",
+          "text",
+          "items",
+          "due_case_date",
+          "delivered_at"
+        ],
+        "title": "NoticeView",
+        "type": "object"
+      },
+      "OpenRequest": {
+        "additionalProperties": false,
+        "description": "An approved request for information the applicant has not answered (FR-011-10).",
+        "properties": {
+          "case_id": {
+            "format": "uuid",
+            "title": "Case Id",
+            "type": "string"
+          },
+          "due_case_date": {
+            "format": "date",
+            "title": "Due Case Date",
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/RequestedItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "notice_id": {
+            "format": "uuid",
+            "title": "Notice Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "notice_id",
+          "case_id",
+          "items",
+          "due_case_date"
+        ],
+        "title": "OpenRequest",
+        "type": "object"
+      },
+      "OpenRequestList": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/OpenRequest"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "OpenRequestList",
         "type": "object"
       },
       "OpenReviewTask": {
@@ -1091,6 +1991,166 @@
         "title": "PayFrequency",
         "type": "string"
       },
+      "PayStubDetails": {
+        "additionalProperties": false,
+        "description": "What the applicant typed for one uploaded pay stub (FR-002-21). `member_id` is the\nhousehold member the employee name matched, or None (FR-002-14).",
+        "properties": {
+          "case_id": {
+            "format": "uuid",
+            "title": "Case Id",
+            "type": "string"
+          },
+          "corrections": {
+            "items": {
+              "$ref": "#/components/schemas/Correction"
+            },
+            "title": "Corrections",
+            "type": "array"
+          },
+          "document_id": {
+            "format": "uuid",
+            "title": "Document Id",
+            "type": "string"
+          },
+          "employee_name": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Employee Name",
+            "type": "string"
+          },
+          "employer": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Employer",
+            "type": "string"
+          },
+          "frequency": {
+            "$ref": "#/components/schemas/PayFrequency"
+          },
+          "gross_pay": {
+            "title": "Gross Pay",
+            "type": "string"
+          },
+          "household_id": {
+            "format": "uuid",
+            "title": "Household Id",
+            "type": "string"
+          },
+          "member_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Member Id"
+          },
+          "pay_date": {
+            "format": "date",
+            "title": "Pay Date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "document_id",
+          "case_id",
+          "household_id",
+          "employee_name",
+          "employer",
+          "frequency",
+          "gross_pay",
+          "pay_date"
+        ],
+        "title": "PayStubDetails",
+        "type": "object"
+      },
+      "PayStubUpload": {
+        "additionalProperties": false,
+        "description": "Step 1 of an upload: the details the applicant typed (FR-002-21). Step 2 sends the file's\nbytes to `PUT /cases/{case_id}/documents/{document_id}/content`.",
+        "properties": {
+          "content_type": {
+            "enum": [
+              "application/pdf",
+              "image/png",
+              "image/jpeg"
+            ],
+            "title": "Content Type",
+            "type": "string"
+          },
+          "employee_name": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Employee Name",
+            "type": "string"
+          },
+          "employer": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Employer",
+            "type": "string"
+          },
+          "frequency": {
+            "$ref": "#/components/schemas/PayFrequency"
+          },
+          "gross_pay": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Gross Pay"
+          },
+          "pay_date": {
+            "format": "date",
+            "title": "Pay Date",
+            "type": "string"
+          },
+          "size_bytes": {
+            "exclusiveMinimum": 0.0,
+            "maximum": 10485760.0,
+            "title": "Size Bytes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "employee_name",
+          "employer",
+          "frequency",
+          "gross_pay",
+          "pay_date",
+          "content_type",
+          "size_bytes"
+        ],
+        "title": "PayStubUpload",
+        "type": "object"
+      },
+      "PendingTimer": {
+        "additionalProperties": false,
+        "description": "The case's next timer, on the case clock. \"Advance clock\" fires it (FR-011-05).",
+        "properties": {
+          "due_case_time": {
+            "format": "date-time",
+            "title": "Due Case Time",
+            "type": "string"
+          },
+          "name": {
+            "$ref": "#/components/schemas/TimerName"
+          }
+        },
+        "required": [
+          "name",
+          "due_case_time"
+        ],
+        "title": "PendingTimer",
+        "type": "object"
+      },
       "ReadinessCheck": {
         "properties": {
           "name": {
@@ -1147,6 +2207,42 @@
         "title": "ReadinessStatus",
         "type": "string"
       },
+      "RedeterminationStart": {
+        "additionalProperties": false,
+        "properties": {
+          "coverage_period_id": {
+            "format": "uuid",
+            "title": "Coverage Period Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "coverage_period_id"
+        ],
+        "title": "RedeterminationStart",
+        "type": "object"
+      },
+      "RedeterminationStarted": {
+        "additionalProperties": false,
+        "properties": {
+          "case_id": {
+            "format": "uuid",
+            "title": "Case Id",
+            "type": "string"
+          },
+          "created": {
+            "description": "false when one was already running for the period",
+            "title": "Created",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "case_id",
+          "created"
+        ],
+        "title": "RedeterminationStarted",
+        "type": "object"
+      },
       "Relationship": {
         "enum": [
           "self",
@@ -1159,6 +2255,88 @@
           "other"
         ],
         "title": "Relationship",
+        "type": "string"
+      },
+      "RequestResponseBody": {
+        "additionalProperties": false,
+        "description": "The applicant's answer: documents uploaded first (002's endpoints), then confirmed items.",
+        "properties": {
+          "confirmed_item_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 50,
+            "title": "Confirmed Item Ids",
+            "type": "array"
+          },
+          "document_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 10,
+            "title": "Document Ids",
+            "type": "array"
+          }
+        },
+        "title": "RequestResponseBody",
+        "type": "object"
+      },
+      "RequestedItem": {
+        "additionalProperties": false,
+        "description": "One thing a request for information asks for (FR-011-12).",
+        "properties": {
+          "item_id": {
+            "format": "uuid",
+            "title": "Item Id",
+            "type": "string"
+          },
+          "job_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Job Id"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/RequestedItemKind"
+          },
+          "label": {
+            "description": "Text shown to the applicant",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Label",
+            "type": "string"
+          },
+          "member_id": {
+            "format": "uuid",
+            "title": "Member Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "item_id",
+          "kind",
+          "member_id",
+          "label"
+        ],
+        "title": "RequestedItem",
+        "type": "object"
+      },
+      "RequestedItemKind": {
+        "enum": [
+          "pay_stub",
+          "confirm_member",
+          "confirm_job",
+          "confirm_income"
+        ],
+        "title": "RequestedItemKind",
         "type": "string"
       },
       "ReviewActionBody": {
@@ -1308,6 +2486,16 @@
         "title": "SessionInfo",
         "type": "object"
       },
+      "TimerName": {
+        "enum": [
+          "response_deadline",
+          "review_reminder",
+          "review_escalation",
+          "coverage_end"
+        ],
+        "title": "TimerName",
+        "type": "string"
+      },
       "UserPublic": {
         "properties": {
           "display_name": {
@@ -1347,6 +2535,63 @@
           "household_id"
         ],
         "title": "UserPublic",
+        "type": "object"
+      },
+      "VerificationResult": {
+        "additionalProperties": false,
+        "description": "Output of `verify_documents` (FR-002-23).\n\n`complete` and `needs_review` keep the names of 001's `VerificationOutcome`, and every\nadded field has a default, so recorded workflow histories still replay (TW-14).\n`identity_verified` is None when the check did not look at identity (the 001 stub).",
+        "properties": {
+          "case_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Case Id"
+          },
+          "complete": {
+            "title": "Complete",
+            "type": "boolean"
+          },
+          "findings": {
+            "items": {
+              "$ref": "#/components/schemas/Finding"
+            },
+            "title": "Findings",
+            "type": "array"
+          },
+          "identity_verified": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Identity Verified"
+          },
+          "missing_items": {
+            "items": {
+              "$ref": "#/components/schemas/MissingDocument"
+            },
+            "title": "Missing Items",
+            "type": "array"
+          },
+          "needs_review": {
+            "title": "Needs Review",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "complete",
+          "needs_review"
+        ],
+        "title": "VerificationResult",
         "type": "object"
       }
     },
@@ -1763,6 +3008,102 @@
         ]
       }
     },
+    "/api/v1/cases/{case_id}/advance-clock": {
+      "post": {
+        "operationId": "advanceCaseClock",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "case_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Case Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Accepted and signalled to the case"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not signed in"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Role not allowed"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not found or not visible to the caller"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not allowed in the case's current state"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "validation_failed"
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "not_implemented: the feature has not landed"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Temporal unavailable"
+          }
+        },
+        "summary": "Demo profile only: fire the case's next pending timer (FR-011-05, FR-011-11)",
+        "tags": [
+          "notices"
+        ]
+      }
+    },
     "/api/v1/cases/{case_id}/determinations": {
       "get": {
         "operationId": "listCaseDeterminations",
@@ -1833,6 +3174,311 @@
         "summary": "Determinations of a case, newest first, with the per-rule trace (FR-003-23)",
         "tags": [
           "cases"
+        ]
+      }
+    },
+    "/api/v1/cases/{case_id}/documents": {
+      "post": {
+        "operationId": "createPayStubDocument",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "case_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Case Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PayStubUpload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentCreated"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not signed in"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Role not allowed"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not found or not visible to the caller"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "validation_failed"
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "not_implemented: the feature has not landed"
+          }
+        },
+        "summary": "Record a pay stub's typed details; the file follows to .../content (FR-002-21)",
+        "tags": [
+          "documents"
+        ]
+      }
+    },
+    "/api/v1/cases/{case_id}/documents/{document_id}/content": {
+      "put": {
+        "operationId": "uploadDocumentContent",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "case_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Case Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Document Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/pdf": {
+              "schema": {
+                "format": "binary",
+                "type": "string"
+              }
+            },
+            "image/jpeg": {
+              "schema": {
+                "format": "binary",
+                "type": "string"
+              }
+            },
+            "image/png": {
+              "schema": {
+                "format": "binary",
+                "type": "string"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "File stored"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not signed in"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Role not allowed"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not found or not visible to the caller"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Larger than 10485760 bytes"
+          },
+          "415": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not PDF, PNG or JPEG"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "validation_failed"
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "not_implemented: the feature has not landed"
+          }
+        },
+        "summary": "Upload the file of a recorded pay stub: PDF, PNG or JPEG, up to 10 MB (FR-002-17)",
+        "tags": [
+          "documents"
+        ]
+      }
+    },
+    "/api/v1/cases/{case_id}/explanations": {
+      "get": {
+        "operationId": "listCaseExplanations",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "case_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Case Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExplanationList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not signed in"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Role not allowed"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not found or not visible to the caller"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "validation_failed"
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "not_implemented: the feature has not landed"
+          }
+        },
+        "summary": "Caseworker explanations of a case's determinations, as stored (FR-004-15)",
+        "tags": [
+          "explanations"
         ]
       }
     },
@@ -2038,6 +3684,89 @@
         ]
       }
     },
+    "/api/v1/cases/{case_id}/verification": {
+      "get": {
+        "operationId": "getCaseVerification",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "case_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Case Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaseVerification"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not signed in"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Role not allowed"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not found or not visible to the caller"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "validation_failed"
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "not_implemented: the feature has not landed"
+          }
+        },
+        "summary": "Documents, entered details and findings of a case (FR-002-18)",
+        "tags": [
+          "documents"
+        ]
+      }
+    },
     "/api/v1/health": {
       "get": {
         "operationId": "getHealth",
@@ -2057,6 +3786,697 @@
         "summary": "Health",
         "tags": [
           "health"
+        ]
+      }
+    },
+    "/api/v1/households/{household_id}": {
+      "get": {
+        "operationId": "getHousehold",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "household_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Household Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HouseholdView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not signed in"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Role not allowed"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not found or not visible to the caller"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "validation_failed"
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "not_implemented: the feature has not landed"
+          }
+        },
+        "summary": "Members, coverage periods and cases of a household (FR-007-18)",
+        "tags": [
+          "households"
+        ]
+      }
+    },
+    "/api/v1/households/{household_id}/redeterminations": {
+      "post": {
+        "operationId": "startRedetermination",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "household_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Household Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RedeterminationStart"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RedeterminationStarted"
+                }
+              }
+            },
+            "description": "Already running for this coverage period (FR-007-07)"
+          },
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RedeterminationStarted"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not signed in"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Role not allowed"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not found or not visible to the caller"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "No active coverage period with that ID"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "validation_failed"
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "not_implemented: the feature has not landed"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Temporal unavailable"
+          }
+        },
+        "summary": "Start a coverage period's redetermination, or link to the running one (FR-007-10)",
+        "tags": [
+          "households"
+        ]
+      }
+    },
+    "/api/v1/me/history": {
+      "get": {
+        "operationId": "getApplicantHistory",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplicantHistory"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not signed in"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Role not allowed"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not found or not visible to the caller"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "validation_failed"
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "not_implemented: the feature has not landed"
+          }
+        },
+        "summary": "The applicant's decisions per coverage period, with explanations (FR-004-16)",
+        "tags": [
+          "explanations"
+        ]
+      }
+    },
+    "/api/v1/me/notices": {
+      "get": {
+        "operationId": "listMyNotices",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NoticeList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not signed in"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Role not allowed"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not found or not visible to the caller"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "validation_failed"
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "not_implemented: the feature has not landed"
+          }
+        },
+        "summary": "Notices delivered to the applicant, newest first (FR-011-09)",
+        "tags": [
+          "notices"
+        ]
+      }
+    },
+    "/api/v1/me/notices/{notice_id}": {
+      "get": {
+        "operationId": "getMyNotice",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "notice_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Notice Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NoticeView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not signed in"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Role not allowed"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not found or not visible to the caller"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "validation_failed"
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "not_implemented: the feature has not landed"
+          }
+        },
+        "summary": "One delivered notice (FR-011-09)",
+        "tags": [
+          "notices"
+        ]
+      }
+    },
+    "/api/v1/me/requests": {
+      "get": {
+        "operationId": "listMyOpenRequests",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenRequestList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not signed in"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Role not allowed"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not found or not visible to the caller"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "validation_failed"
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "not_implemented: the feature has not landed"
+          }
+        },
+        "summary": "Open requests for information, with items and due dates (FR-011-10)",
+        "tags": [
+          "notices"
+        ]
+      }
+    },
+    "/api/v1/me/requests/{notice_id}/response": {
+      "post": {
+        "operationId": "respondToRequest",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "notice_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Notice Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RequestResponseBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted and signalled to the case"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not signed in"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Role not allowed"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not found or not visible to the caller"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not allowed in the case's current state"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "validation_failed"
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "not_implemented: the feature has not landed"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Temporal unavailable"
+          }
+        },
+        "summary": "Answer a request: uploaded documents and confirmed items (FR-011-03, FR-011-10)",
+        "tags": [
+          "notices"
+        ]
+      }
+    },
+    "/api/v1/metrics": {
+      "get": {
+        "operationId": "getProgramMetrics",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "month",
+            "required": true,
+            "schema": {
+              "pattern": "^\\d{4}-\\d{2}$",
+              "title": "Month",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MetricsReport"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not signed in"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Role not allowed"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not found or not visible to the caller"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "validation_failed"
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "not_implemented: the feature has not landed"
+          }
+        },
+        "summary": "The four program metrics for one month, by case-clock dates (FR-008-08)",
+        "tags": [
+          "metrics"
         ]
       }
     },

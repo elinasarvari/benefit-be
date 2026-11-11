@@ -14,6 +14,7 @@ STATUS_FOR_CODE: dict[ErrorCode, int] = {
     ErrorCode.validation_failed: 422,
     ErrorCode.internal_error: 500,
     ErrorCode.dependency_unavailable: 503,
+    ErrorCode.not_implemented: 501,
 }
 
 DEFAULT_MESSAGE: dict[ErrorCode, str] = {
@@ -26,6 +27,7 @@ DEFAULT_MESSAGE: dict[ErrorCode, str] = {
     ErrorCode.validation_failed: "Some fields are invalid.",
     ErrorCode.internal_error: "Something went wrong.",
     ErrorCode.dependency_unavailable: "A required service is unavailable.",
+    ErrorCode.not_implemented: "This feature is not available yet.",
 }
 
 
@@ -98,3 +100,10 @@ class CredentialRejected(AppError):
     """A system credential failed verification (wrong case, expired, wrong audience or type)."""
 
     code = ErrorCode.auth_forbidden
+
+
+class NotBuiltYet(AppError):
+    """A contract endpoint whose feature has not landed (MVP contracts PR). Each feature replaces
+    its stubs; nothing should raise this once the MVP is built."""
+
+    code = ErrorCode.not_implemented

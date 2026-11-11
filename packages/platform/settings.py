@@ -120,6 +120,9 @@ class Settings(BaseSettings):
     REVIEW_REMINDER_DAYS: int = Field(default=2, ge=1)
     REVIEW_ESCALATION_DAYS: int = Field(default=4, ge=1)
 
+    # Applicant waits (case-clock days, FR-011-01, FR-011-04)
+    RESPONSE_WINDOW_DAYS: int = Field(default=15, ge=1)
+
     @model_validator(mode="before")
     @classmethod
     def _environment_defaults(cls, data: dict[str, Any]) -> dict[str, Any]:

@@ -11,6 +11,7 @@ from enum import StrEnum
 from typing import Any
 from uuid import UUID
 
+from pymongo.asynchronous.client_session import AsyncClientSession
 from pymongo.asynchronous.database import AsyncDatabase
 
 from packages.domain.auth import Principal, Role, SystemCredentialClaims
@@ -21,6 +22,7 @@ SCOPED_WITH_CASE = (
     "case_events",
     "review_tasks",
     "caseworker_actions",
+    "applications",
     "determinations",
     "household_snapshots",
     "outbox",
@@ -30,7 +32,7 @@ SCOPED_WITH_CASE = (
     "notice_drafts",
     "tool_calls",
 )
-SCOPED_HOUSEHOLD_ONLY = ("household_members", "coverage_periods")
+SCOPED_HOUSEHOLD_ONLY = ("household_members", "coverage_periods", "household_stub_results")
 HOUSEHOLD_SCOPED = frozenset(SCOPED_WITH_CASE + SCOPED_HOUSEHOLD_ONLY)
 # Collections with no household data. Any name not in this registry is refused, so a typo or a
 # new collection can never skip the household filter by accident.
@@ -41,6 +43,8 @@ MAX_LIMIT = 500
 class ScopeKind(StrEnum):
     user = "user"
     system = "system"
+    # Worker activities: bound to the one case and household in the workflow input (ADR-001-06).
+    worker = "worker"
 
 
 class ScopeRequired(AppError):
@@ -62,6 +66,19 @@ class Scope:
     def for_system(cls, claims: SystemCredentialClaims) -> Scope:
         return cls(ScopeKind.system, case_id=claims.case_id)
 
+    @classmethod
+    def for_worker(cls, case_id: UUID, household_id: UUID) -> Scope:
+        return cls(ScopeKind.worker, case_id=case_id, household_id=household_id)
+
+
+def _worker_limit(scope: Scope, collection: str) -> dict[str, Any]:
+    """Case collections by case_id, household-only collections by household_id (ADR-001-06)."""
+    if collection in SCOPED_WITH_CASE and scope.case_id is not None:
+        return {"case_id": scope.case_id}
+    if collection in SCOPED_HOUSEHOLD_ONLY and scope.household_id is not None:
+        return {"household_id": scope.household_id}
+    raise Forbidden()
+
 
 def _own_household(scope: Scope) -> dict[str, Any]:
     if scope.household_id is None:
@@ -80,7 +97,9 @@ def scoped_filter(
         return query
     limit: dict[str, Any]
     if collection in HOUSEHOLD_SCOPED:
-        if scope.kind is ScopeKind.system:
+        if scope.kind is ScopeKind.worker:
+            limit = _worker_limit(scope, collection)
+        elif scope.kind is ScopeKind.system:
             if collection not in SCOPED_WITH_CASE or scope.case_id is None:
                 raise Forbidden()
             limit = {"case_id": scope.case_id}
@@ -89,7 +108,7 @@ def scoped_filter(
         else:
             limit = _own_household(scope) if scope.role is Role.applicant else {}
     elif collection in ("households", "users"):
-        if scope.kind is ScopeKind.system or scope.role is None:
+        if scope.kind is not ScopeKind.user or scope.role is None:
             raise Forbidden()
         if scope.role is Role.applicant:
             household = _own_household(scope)["household_id"]
@@ -110,8 +129,26 @@ async def find_one(
     query: dict[str, Any] | None,
     *,
     projection: dict[str, int],
+    session: AsyncClientSession | None = None,
 ) -> dict[str, Any] | None:
-    return await db[collection].find_one(scoped_filter(scope, collection, query), projection)
+    return await db[collection].find_one(
+        scoped_filter(scope, collection, query), projection, session=session
+    )
+
+
+async def insert_one(
+    db: AsyncDatabase[dict[str, Any]],
+    collection: str,
+    scope: Scope | None,
+    document: dict[str, Any],
+    *,
+    session: AsyncClientSession | None = None,
+) -> None:
+    """Insert a document only if it falls inside the scope (same limits as a read)."""
+    limit = scoped_filter(scope, collection)
+    if any(document.get(field) != value for field, value in limit.items()):
+        raise Forbidden()
+    await db[collection].insert_one(document, session=session)
 
 
 async def find_many(

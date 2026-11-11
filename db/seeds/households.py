@@ -15,7 +15,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
 
-from db.seeds.ids import HOUSEHOLD_A, HOUSEHOLD_B, rng, seeded_id
+from db.seeds.ids import HOUSEHOLD_A, HOUSEHOLD_B, HOUSEHOLD_C, rng, seeded_id
 from db.seeds.names import EMPLOYERS, FAMILY_NAMES, GIVEN_NAMES, OTHER_STATES
 from packages.domain.household import (
     HouseholdMember,
@@ -156,6 +156,9 @@ def _plan(quota: random.Random) -> list[_Plan]:
             household_id, key = HOUSEHOLD_A, "household-a"
         elif i == 1:
             household_id, key = HOUSEHOLD_B, "household-b"
+        elif named_label == "missing-document":
+            # main's demo household C (applicant3, cannot-determine); ADR-003-07
+            household_id, key = HOUSEHOLD_C, "household-c"
         elif named_label:
             household_id, key = seeded_id(f"household-{named_label}"), f"household-{named_label}"
         else:

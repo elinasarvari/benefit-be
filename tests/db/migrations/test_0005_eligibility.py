@@ -25,7 +25,7 @@ def _record() -> DeterminationRecord:
     )
 
 
-async def test_FR_003_06_migration_0002_upgrade_enforces_validators_and_downgrade_restores_baseline(
+async def test_FR_003_06_migration_0005_upgrade_enforces_validators_and_downgrade_restores_baseline(
     integration_settings: Settings, owner_url: str
 ) -> None:
     valid = to_document(_record(), "determination_id")

@@ -5,9 +5,14 @@ from datetime import UTC, datetime
 
 import pytest
 
-from db.seeds.ids import HOUSEHOLD_A, HOUSEHOLD_B, SEED
+from db.seeds.generate import application_documents, household_documents, stub_result_documents
+from db.seeds.households import build_dataset
+from db.seeds.ids import HOUSEHOLD_A, HOUSEHOLD_B, HOUSEHOLD_C, SEED, SEED_ANCHOR_DATE, seeded_id
 from db.seeds.reset import ResetRefused, guard, reset
+from db.seeds.users import DEMO_ACCOUNTS
+from packages.domain.case import DeterminationOutcome
 from packages.platform.settings import Settings
+from tests.apps.worker.case_factories import case_document
 from tests.integration.fixtures import open_client, rebuild
 
 
@@ -25,9 +30,31 @@ async def test_FR_000_02_reset_restores_seeded_counts_and_markers(
         ids = {doc["_id"] async for doc in db["households"].find({}, {"_id": 1})}
         marker = await db["_meta"].find_one({"_id": "dataset"})
     assert len(ids) == 200
-    assert {HOUSEHOLD_A, HOUSEHOLD_B} <= ids
+    assert {HOUSEHOLD_A, HOUSEHOLD_B, HOUSEHOLD_C} <= ids
     assert marker is not None
     assert marker["synthetic"] is True
+
+
+def test_FR_001_16_seed_covers_every_stub_result_with_synthetic_households() -> None:
+    # A, B and C are three of 003's 200 generated households (ADR-003-07); only they carry
+    # the 001 stub result, until 003's determination activity replaces the stub.
+    documents = [
+        doc for doc in household_documents(build_dataset(SEED_ANCHOR_DATE)) if "stub_result" in doc
+    ]
+
+    results = [doc["stub_result"] for doc in documents]
+    synthetic_ids = {seeded_id(f"household-{name}") for name in ("a", "b", "c")}
+    assert sorted(results) == sorted(outcome.value for outcome in DeterminationOutcome)
+    assert {doc["_id"] for doc in documents} == synthetic_ids
+    assert all(
+        set(doc) == {"_id", "created_at", "address_state", "seed_key", "stub_result"}
+        for doc in documents
+    )
+    # The worker-readable copy (ADR-001-06) holds the same results, keyed by household_id.
+    copies = {doc["household_id"]: doc["stub_result"] for doc in stub_result_documents()}
+    assert copies == {doc["_id"]: doc["stub_result"] for doc in documents}
+    applicant_households = {hid for *_, hid in DEMO_ACCOUNTS if hid is not None}
+    assert applicant_households == synthetic_ids
 
 
 async def test_FR_000_02_reset_refuses_non_local_host(integration_settings: Settings) -> None:
@@ -77,3 +104,65 @@ async def test_FR_003_06_reset_mirrors_both_rule_sets_into_collection(
     async with open_client(owner_url) as client:
         docs = [d async for d in client[integration_settings.MONGO_DB]["rule_sets"].find({})]
     assert {d["_id"] for d in docs} >= {"IL-ADULT-2025@1", "IL-ADULT-2026@1"}
+
+
+async def test_FR_001_24_every_seeded_case_has_a_synthetic_application(
+    integration_settings: Settings, owner_url: str
+) -> None:
+    async with open_client(owner_url) as client:
+        db = client[integration_settings.MONGO_DB]
+        await rebuild(integration_settings)
+        case_ids = {doc["_id"] async for doc in db["cases"].find({}, {"_id": 1})}
+        applications = [doc async for doc in db["applications"].find()]
+
+    assert {doc["_id"] for doc in applications} == case_ids
+    assert all(doc["case_id"] == doc["_id"] and doc["synthetic"] is True for doc in applications)
+
+
+async def test_FR_001_24_seed_gives_an_existing_case_a_synthetic_application(
+    integration_settings: Settings, owner_url: str
+) -> None:
+    """TC-87 with a case present, so the check above cannot pass with zero rows."""
+    from db.seeds.generate import seed
+
+    case_id = uuid.uuid4()
+    async with open_client(owner_url) as client:
+        db = client[integration_settings.MONGO_DB]
+        await rebuild(integration_settings)
+        for name in (
+            "households",
+            "household_stub_results",
+            "household_members",
+            "users",
+            "applications",
+        ):
+            await db[name].delete_many({})
+        await db["cases"].insert_one(case_document(case_id, HOUSEHOLD_A))
+        await seed(integration_settings)
+        applications = [doc async for doc in db["applications"].find()]
+        await rebuild(integration_settings)
+
+    assert [doc["_id"] for doc in applications] == [case_id]
+    assert applications[0]["synthetic"] is True
+
+
+def test_FR_001_24_application_documents_match_cases_with_synthetic_names() -> None:
+    case_id = uuid.uuid4()
+    case_start = datetime(2026, 3, 17, 15, tzinfo=UTC)
+    case = {
+        "_id": case_id,
+        "case_id": case_id,
+        "household_id": HOUSEHOLD_A,
+        "submission_reference": "sub-seed-1",
+        "clock": {"case_start": case_start},
+    }
+
+    [doc] = application_documents([case])
+
+    assert doc["_id"] == case_id == doc["case_id"]
+    assert doc["household_id"] == HOUSEHOLD_A
+    assert doc["submission_reference"] == "sub-seed-1"
+    assert doc["synthetic"] is True
+    assert doc["submitted_at"] == case_start
+    assert all(m["full_name"].startswith("SYNTH-") for m in doc["form"]["members"])
+    assert application_documents([]) == []

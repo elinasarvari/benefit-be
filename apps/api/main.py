@@ -9,7 +9,7 @@ from fastapi import APIRouter, FastAPI
 from apps.api.dependencies.auth import SESSION_COOKIE
 from apps.api.errors import register_error_handlers
 from apps.api.middleware.request_context import RequestContextMiddleware
-from apps.api.routers import auth, health
+from apps.api.routers import applications, auth, cases, health
 from packages.platform.logging import configure_logging
 from packages.platform.mongo import make_client
 from packages.platform.settings import Settings, load_settings
@@ -53,6 +53,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     api = APIRouter(prefix=API_PREFIX)
     api.include_router(health.router)
     api.include_router(auth.router)
+    api.include_router(applications.router)
+    api.include_router(cases.router)
     app.include_router(api)
     _declare_security(app)
     return app

@@ -2,12 +2,14 @@
 
 Replaces the minimal baseline validators of `household_members`, `household_snapshots`,
 `determinations` and `rule_sets`, adds `address_state` and `seed_key` to `households` and
-`anchor_date` to `_meta`. Downgrade restores the baseline validators and drops the new indexes.
+`anchor_date` to `_meta`. Runs after main's 0002–0004 (ADR-003-07). Downgrade restores the
+previous validators (0003's `households`, the baseline's others) and drops the new indexes.
 Documents follow `db/seeds/records.py`: UUIDs binary, dates BSON dates, money strings.
 """
 
 from __future__ import annotations
 
+import importlib
 from typing import Any
 
 from db.migrate import MigrationContext
@@ -36,15 +38,17 @@ def _array(items: dict[str, Any]) -> dict[str, Any]:
     return {"bsonType": "array", "items": items}
 
 
-HOUSEHOLDS_SCHEMA = _object(
-    {
-        "_id": UUID,
-        "created_at": DATE,
+# main's 0003 households validator (with 001's `stub_result`) plus 003's fields (ADR-003-07).
+_case_lifecycle = importlib.import_module("db.migrations.versions.0003_case_lifecycle")
+_PRIOR_HOUSEHOLDS: dict[str, Any] = _case_lifecycle.HOUSEHOLDS_SCHEMA
+HOUSEHOLDS_SCHEMA: dict[str, Any] = {
+    **_PRIOR_HOUSEHOLDS,
+    "properties": {
+        **_PRIOR_HOUSEHOLDS["properties"],
         "address_state": STATE,
         "seed_key": {"bsonType": "string"},
     },
-    ["_id", "created_at"],
-)
+}
 
 JOB = _object(
     {
@@ -179,8 +183,9 @@ META_SCHEMA = _object(
     }
 )
 
-# The baseline validators (0001_baseline.py), restored on downgrade.
-_BASELINE_HOUSEHOLDS = _object({"_id": UUID, "created_at": DATE})
+# The validators before this migration, restored on downgrade: `households` as 0003 left it,
+# the others as 0001_baseline.py created them.
+_BASELINE_HOUSEHOLDS = _PRIOR_HOUSEHOLDS
 _BASELINE_META = _object(
     {
         "_id": {"enum": ["dataset"]},

@@ -32,3 +32,4 @@ def seeded_id(name: str) -> uuid.UUID:
 
 HOUSEHOLD_A = seeded_id("household-a")
 HOUSEHOLD_B = seeded_id("household-b")
+HOUSEHOLD_C = seeded_id("household-c")

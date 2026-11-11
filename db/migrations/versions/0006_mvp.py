@@ -1,6 +1,8 @@
 """MVP collections (specs/mvp-contracts.md section 5): pay stub details and verification results
 (002), reference records (002, seed task S-01), notices and applicant responses (011), and
-decision explanations (004a, 011).
+decision explanations (004a, 011). Also adds 002's two new review causes (`income_mismatch`,
+`conflicting_stubs`) to the `review_tasks` validator, which lists every cause (0002); the
+validator is read and edited in place so 0005's `synthetic` marker is kept.
 
 Each starts with the baseline's minimal validator (`_id`, `household_id`, and `case_id` for case
 collections) and may carry `synthetic: true` (FR-000-14). The owning feature tightens its own
@@ -49,13 +51,36 @@ INDEXES: list[tuple[str, list[tuple[str, int]], str, bool]] = [
 ]
 
 
+REVIEW_TASKS = "review_tasks"
+NEW_REVIEW_CAUSES = ["income_mismatch", "conflicting_stubs"]
+
+
 def _minimal(required: list[str]) -> dict[str, Any]:
     properties: dict[str, Any] = {name: UUID for name in required if name != "_id"}
     properties["synthetic"] = SYNTHETIC
     return {"bsonType": "object", "required": required, "properties": properties}
 
 
+async def _review_tasks_schema(ctx: MigrationContext) -> dict[str, Any]:
+    async for info in await ctx.db.list_collections(filter={"name": REVIEW_TASKS}):
+        schema: dict[str, Any] = info["options"]["validator"]["$jsonSchema"]
+        return schema
+    raise RuntimeError(f"collection {REVIEW_TASKS} has no validator")
+
+
+async def _set_review_causes(ctx: MigrationContext, *, add: bool) -> None:
+    schema = await _review_tasks_schema(ctx)
+    causes = [c for c in schema["properties"]["cause"]["enum"] if c not in NEW_REVIEW_CAUSES]
+    if add:
+        causes += NEW_REVIEW_CAUSES
+    properties = {**schema["properties"], "cause": {"enum": causes}}
+    await ctx.db.command(
+        "collMod", REVIEW_TASKS, validator={"$jsonSchema": {**schema, "properties": properties}}
+    )
+
+
 async def upgrade(ctx: MigrationContext) -> None:
+    await _set_review_causes(ctx, add=True)
     for name in CREATED_WITH_CASE:
         await ctx.db.create_collection(
             name, validator={"$jsonSchema": _minimal(["_id", "household_id", "case_id"])}
@@ -69,5 +94,6 @@ async def upgrade(ctx: MigrationContext) -> None:
 
 
 async def downgrade(ctx: MigrationContext) -> None:
+    await _set_review_causes(ctx, add=False)
     for name in [*CREATED_WITH_CASE, *CREATED_HOUSEHOLD_ONLY]:
         await ctx.db.drop_collection(name)

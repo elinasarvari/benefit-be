@@ -21,6 +21,11 @@ def _ctx(client: Client, settings: Settings) -> MigrationContext:
     return MigrationContext(client, client[settings.MONGO_DB], client[settings.MONGO_AUDIT_DB])
 
 
+async def _causes(ctx: MigrationContext) -> set[str]:
+    schema = await mvp._review_tasks_schema(ctx)
+    return set(schema["properties"]["cause"]["enum"])
+
+
 async def test_mvp_migration_0006_creates_collections_and_downgrade_drops_them(
     integration_settings: Settings, owner_url: str
 ) -> None:
@@ -29,10 +34,15 @@ async def test_mvp_migration_0006_creates_collections_and_downgrade_drops_them(
         try:
             await down(ctx, "0005_eligibility")
             assert not set(CREATED) & set(await ctx.db.list_collection_names())
+            causes = await _causes(ctx)
+            assert not set(mvp.NEW_REVIEW_CAUSES) & causes
 
             await up(ctx)
             names = set(await ctx.db.list_collection_names())
             assert set(CREATED) <= names
+            assert set(mvp.NEW_REVIEW_CAUSES) <= await _causes(ctx)
+            schema = await mvp._review_tasks_schema(ctx)
+            assert "synthetic" in schema["properties"]  # 0005's marker survives
             for name, _keys, index_name, unique in mvp.INDEXES:
                 info = await ctx.db[name].index_information()
                 assert info[index_name].get("unique", False) is unique, (name, index_name)

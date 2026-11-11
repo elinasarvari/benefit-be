@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from uuid import UUID
+
 from packages.domain.errors import ErrorCode, FieldError
 
 STATUS_FOR_CODE: dict[ErrorCode, int] = {
@@ -32,9 +34,18 @@ class AppError(Exception):
 
     code: ErrorCode = ErrorCode.internal_error
 
-    def __init__(self, message: str | None = None, *, fields: list[FieldError] | None = None):
+    def __init__(
+        self,
+        message: str | None = None,
+        *,
+        fields: list[FieldError] | None = None,
+        related_case_id: UUID | None = None,
+    ):
         self.message = message or DEFAULT_MESSAGE[self.code]
         self.fields = fields or []
+        self.related_case_id = (
+            related_case_id  # only the two household refusals set it (ADR-001-09)
+        )
         super().__init__(self.message)
 
     @property
@@ -71,6 +82,12 @@ class NotFound(AppError):
 
 class Conflict(AppError):
     code = ErrorCode.conflict
+
+
+class InvalidInput(AppError):
+    """A well-formed request whose value is not acceptable (for example a bad cursor)."""
+
+    code = ErrorCode.validation_failed
 
 
 class DependencyUnavailable(AppError):

@@ -1,6 +1,541 @@
 {
   "components": {
     "schemas": {
+      "ActionType": {
+        "enum": [
+          "approve_denial",
+          "override_to_approve",
+          "request_information",
+          "correct_value",
+          "dismiss_finding",
+          "accept_findings",
+          "approve",
+          "edit_and_approve",
+          "deny_missing_information",
+          "extend_15_days",
+          "continue_with_held_data"
+        ],
+        "title": "ActionType",
+        "type": "string"
+      },
+      "ApplicantMember": {
+        "additionalProperties": false,
+        "properties": {
+          "citizenship_status": {
+            "$ref": "#/components/schemas/CitizenshipStatus"
+          },
+          "date_of_birth": {
+            "format": "date",
+            "title": "Date Of Birth",
+            "type": "string"
+          },
+          "full_name": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Full Name",
+            "type": "string"
+          },
+          "jobs": {
+            "items": {
+              "$ref": "#/components/schemas/Job"
+            },
+            "maxItems": 5,
+            "title": "Jobs",
+            "type": "array"
+          },
+          "medicare_entitled": {
+            "title": "Medicare Entitled",
+            "type": "boolean"
+          },
+          "relationship": {
+            "$ref": "#/components/schemas/Relationship"
+          },
+          "zero_income": {
+            "title": "Zero Income",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "full_name",
+          "date_of_birth",
+          "relationship",
+          "citizenship_status",
+          "medicare_entitled",
+          "zero_income"
+        ],
+        "title": "ApplicantMember",
+        "type": "object"
+      },
+      "ApplicationForm": {
+        "additionalProperties": false,
+        "properties": {
+          "address": {
+            "$ref": "#/components/schemas/IllinoisAddress"
+          },
+          "members": {
+            "items": {
+              "$ref": "#/components/schemas/ApplicantMember"
+            },
+            "maxItems": 10,
+            "minItems": 1,
+            "title": "Members",
+            "type": "array"
+          }
+        },
+        "required": [
+          "members",
+          "address"
+        ],
+        "title": "ApplicationForm",
+        "type": "object"
+      },
+      "ApplicationSubmission": {
+        "additionalProperties": false,
+        "description": "API body; the household comes from the session, never from the body.",
+        "properties": {
+          "form": {
+            "$ref": "#/components/schemas/ApplicationForm"
+          },
+          "submission_reference": {
+            "format": "uuid",
+            "title": "Submission Reference",
+            "type": "string"
+          }
+        },
+        "required": [
+          "submission_reference",
+          "form"
+        ],
+        "title": "ApplicationSubmission",
+        "type": "object"
+      },
+      "CaseDetail": {
+        "additionalProperties": false,
+        "properties": {
+          "at_risk": {
+            "default": false,
+            "title": "At Risk",
+            "type": "boolean"
+          },
+          "case_id": {
+            "format": "uuid",
+            "title": "Case Id",
+            "type": "string"
+          },
+          "case_type": {
+            "$ref": "#/components/schemas/CaseType"
+          },
+          "coverage_period": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CoverageSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "days_remaining": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "null once decided",
+            "title": "Days Remaining"
+          },
+          "decision_deadline": {
+            "format": "date",
+            "title": "Decision Deadline",
+            "type": "string"
+          },
+          "demo_clock": {
+            "default": false,
+            "title": "Demo Clock",
+            "type": "boolean"
+          },
+          "denial_reason": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DenialReason"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "open_review_task": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OpenReviewTask"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "outcome": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CaseOutcome"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "override": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OverrideSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "received_on": {
+            "format": "date",
+            "title": "Received On",
+            "type": "string"
+          },
+          "state": {
+            "$ref": "#/components/schemas/CaseState"
+          }
+        },
+        "required": [
+          "case_id",
+          "state",
+          "received_on",
+          "decision_deadline",
+          "days_remaining",
+          "at_risk",
+          "outcome",
+          "denial_reason",
+          "open_review_task",
+          "case_type",
+          "coverage_period",
+          "override",
+          "demo_clock"
+        ],
+        "title": "CaseDetail",
+        "type": "object"
+      },
+      "CaseEventKind": {
+        "enum": [
+          "state_changed",
+          "review_task_opened",
+          "caseworker_action",
+          "action_rejected",
+          "notice_requested",
+          "coverage_started",
+          "demo_action"
+        ],
+        "title": "CaseEventKind",
+        "type": "string"
+      },
+      "CaseHistoryEntry": {
+        "additionalProperties": false,
+        "properties": {
+          "actor": {
+            "description": "System or a display name",
+            "title": "Actor",
+            "type": "string"
+          },
+          "actor_type": {
+            "$ref": "#/components/schemas/EventActorType"
+          },
+          "case_time": {
+            "format": "date-time",
+            "title": "Case Time",
+            "type": "string"
+          },
+          "from_state": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CaseState"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "kind": {
+            "$ref": "#/components/schemas/CaseEventKind"
+          },
+          "real_time": {
+            "format": "date-time",
+            "title": "Real Time",
+            "type": "string"
+          },
+          "reason_code": {
+            "title": "Reason Code",
+            "type": "string"
+          },
+          "seq": {
+            "title": "Seq",
+            "type": "integer"
+          },
+          "to_state": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CaseState"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "seq",
+          "kind",
+          "case_time",
+          "real_time",
+          "actor",
+          "actor_type",
+          "reason_code"
+        ],
+        "title": "CaseHistoryEntry",
+        "type": "object"
+      },
+      "CaseHistoryPage": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CaseHistoryEntry"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items",
+          "next_cursor"
+        ],
+        "title": "CaseHistoryPage",
+        "type": "object"
+      },
+      "CaseOutcome": {
+        "enum": [
+          "approved",
+          "denied",
+          "renewed_automatically",
+          "renewed_after_response",
+          "ended_by_caseworker"
+        ],
+        "title": "CaseOutcome",
+        "type": "string"
+      },
+      "CasePage": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CaseSummary"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items",
+          "next_cursor"
+        ],
+        "title": "CasePage",
+        "type": "object"
+      },
+      "CaseState": {
+        "enum": [
+          "submitted",
+          "verifying",
+          "awaiting_applicant",
+          "determining",
+          "under_review",
+          "decided"
+        ],
+        "title": "CaseState",
+        "type": "string"
+      },
+      "CaseStatus": {
+        "additionalProperties": false,
+        "description": "Query result `status` and API response. `at_risk` is derived from `days_remaining`.",
+        "properties": {
+          "at_risk": {
+            "default": false,
+            "title": "At Risk",
+            "type": "boolean"
+          },
+          "case_id": {
+            "format": "uuid",
+            "title": "Case Id",
+            "type": "string"
+          },
+          "days_remaining": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "null once decided",
+            "title": "Days Remaining"
+          },
+          "decision_deadline": {
+            "format": "date",
+            "title": "Decision Deadline",
+            "type": "string"
+          },
+          "denial_reason": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DenialReason"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "open_review_task": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OpenReviewTask"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "outcome": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CaseOutcome"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "received_on": {
+            "format": "date",
+            "title": "Received On",
+            "type": "string"
+          },
+          "state": {
+            "$ref": "#/components/schemas/CaseState"
+          }
+        },
+        "required": [
+          "case_id",
+          "state",
+          "received_on",
+          "decision_deadline",
+          "days_remaining",
+          "at_risk",
+          "outcome",
+          "denial_reason",
+          "open_review_task"
+        ],
+        "title": "CaseStatus",
+        "type": "object"
+      },
+      "CaseSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "at_risk": {
+            "default": false,
+            "title": "At Risk",
+            "type": "boolean"
+          },
+          "case_id": {
+            "format": "uuid",
+            "title": "Case Id",
+            "type": "string"
+          },
+          "case_type": {
+            "$ref": "#/components/schemas/CaseType"
+          },
+          "days_remaining": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Days Remaining"
+          },
+          "decision_deadline": {
+            "format": "date",
+            "title": "Decision Deadline",
+            "type": "string"
+          },
+          "outcome": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CaseOutcome"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "received_on": {
+            "format": "date",
+            "title": "Received On",
+            "type": "string"
+          },
+          "state": {
+            "$ref": "#/components/schemas/CaseState"
+          }
+        },
+        "required": [
+          "case_id",
+          "case_type",
+          "state",
+          "received_on",
+          "decision_deadline"
+        ],
+        "title": "CaseSummary",
+        "type": "object"
+      },
+      "CaseType": {
+        "enum": [
+          "application",
+          "redetermination"
+        ],
+        "title": "CaseType",
+        "type": "string"
+      },
       "CheckStatus": {
         "enum": [
           "ok",
@@ -8,6 +543,59 @@
           "degraded"
         ],
         "title": "CheckStatus",
+        "type": "string"
+      },
+      "CitizenshipStatus": {
+        "enum": [
+          "us_citizen",
+          "qualifying_immigrant",
+          "neither"
+        ],
+        "title": "CitizenshipStatus",
+        "type": "string"
+      },
+      "CoverageStatus": {
+        "enum": [
+          "active",
+          "continued_pending_review",
+          "renewed",
+          "ended"
+        ],
+        "title": "CoverageStatus",
+        "type": "string"
+      },
+      "CoverageSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "end_date": {
+            "format": "date",
+            "title": "End Date",
+            "type": "string"
+          },
+          "start_date": {
+            "format": "date",
+            "title": "Start Date",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/CoverageStatus"
+          }
+        },
+        "required": [
+          "start_date",
+          "end_date",
+          "status"
+        ],
+        "title": "CoverageSummary",
+        "type": "object"
+      },
+      "DenialReason": {
+        "enum": [
+          "income_over_limit",
+          "other_rule_not_met",
+          "missing_information"
+        ],
+        "title": "DenialReason",
         "type": "string"
       },
       "ErrorBody": {
@@ -30,6 +618,18 @@
           "reference_id": {
             "title": "Reference Id",
             "type": "string"
+          },
+          "related_case_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Related Case Id"
           }
         },
         "required": [
@@ -67,6 +667,14 @@
         ],
         "title": "ErrorEnvelope",
         "type": "object"
+      },
+      "EventActorType": {
+        "enum": [
+          "system",
+          "user"
+        ],
+        "title": "EventActorType",
+        "type": "string"
       },
       "FieldError": {
         "properties": {
@@ -121,6 +729,86 @@
         "title": "HealthReport",
         "type": "object"
       },
+      "IllinoisAddress": {
+        "additionalProperties": false,
+        "properties": {
+          "city": {
+            "maxLength": 60,
+            "minLength": 1,
+            "title": "City",
+            "type": "string"
+          },
+          "line1": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Line1",
+            "type": "string"
+          },
+          "line2": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Line2"
+          },
+          "postal_code": {
+            "pattern": "^\\d{5}$",
+            "title": "Postal Code",
+            "type": "string"
+          },
+          "state": {
+            "const": "IL",
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "line1",
+          "city",
+          "state",
+          "postal_code"
+        ],
+        "title": "IllinoisAddress",
+        "type": "object"
+      },
+      "Job": {
+        "additionalProperties": false,
+        "properties": {
+          "declared_monthly_gross": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Declared Monthly Gross"
+          },
+          "employer": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Employer",
+            "type": "string"
+          },
+          "pay_frequency": {
+            "$ref": "#/components/schemas/PayFrequency"
+          }
+        },
+        "required": [
+          "employer",
+          "pay_frequency",
+          "declared_monthly_gross"
+        ],
+        "title": "Job",
+        "type": "object"
+      },
       "LoginRequest": {
         "additionalProperties": false,
         "properties": {
@@ -144,6 +832,75 @@
         ],
         "title": "LoginRequest",
         "type": "object"
+      },
+      "OpenReviewTask": {
+        "additionalProperties": false,
+        "properties": {
+          "allowed_actions": {
+            "items": {
+              "$ref": "#/components/schemas/ActionType"
+            },
+            "title": "Allowed Actions",
+            "type": "array"
+          },
+          "reason": {
+            "$ref": "#/components/schemas/ReviewReason"
+          },
+          "task_id": {
+            "format": "uuid",
+            "title": "Task Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "task_id",
+          "reason",
+          "allowed_actions"
+        ],
+        "title": "OpenReviewTask",
+        "type": "object"
+      },
+      "OverrideSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "decided_on": {
+            "format": "date",
+            "title": "Decided On",
+            "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "null for applicants",
+            "title": "Reason"
+          },
+          "reviewer_name": {
+            "title": "Reviewer Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reviewer_name",
+          "decided_on"
+        ],
+        "title": "OverrideSummary",
+        "type": "object"
+      },
+      "PayFrequency": {
+        "enum": [
+          "weekly",
+          "biweekly",
+          "semimonthly",
+          "monthly"
+        ],
+        "title": "PayFrequency",
+        "type": "string"
       },
       "ReadinessCheck": {
         "properties": {
@@ -199,6 +956,69 @@
           "not_ready"
         ],
         "title": "ReadinessStatus",
+        "type": "string"
+      },
+      "Relationship": {
+        "enum": [
+          "self",
+          "spouse",
+          "partner",
+          "child",
+          "parent",
+          "sibling",
+          "other_relative",
+          "other"
+        ],
+        "title": "Relationship",
+        "type": "string"
+      },
+      "ReviewActionBody": {
+        "additionalProperties": false,
+        "description": "A caseworker's action. The reviewer comes from the session, never from the body.\n\n`reason` is never logged or echoed in an error (PL-11).",
+        "properties": {
+          "action": {
+            "enum": [
+              "approve_denial",
+              "override_to_approve"
+            ],
+            "title": "Action",
+            "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "request_id": {
+            "format": "uuid",
+            "title": "Request Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "action",
+          "request_id"
+        ],
+        "title": "ReviewActionBody",
+        "type": "object"
+      },
+      "ReviewReason": {
+        "enum": [
+          "adverse_determination",
+          "cannot_determine",
+          "notice_approval",
+          "verification_review",
+          "missed_response_deadline",
+          "explanation_review"
+        ],
+        "title": "ReviewReason",
         "type": "string"
       },
       "Role": {
@@ -284,6 +1104,97 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/v1/applications": {
+      "post": {
+        "operationId": "submitApplication",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApplicationSubmission"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaseStatus"
+                }
+              }
+            },
+            "description": "Same submission reference already opened this case"
+          },
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaseStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not signed in"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Role not allowed"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Refused: error.code=conflict, reason in error.fields[0].type (household_has_open_case | household_has_coverage | submission_reference_in_use); error.related_case_id set for the first two"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "validation_failed; error.fields[].field is the dotted form path"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Temporal unavailable; retry the same submission"
+          }
+        },
+        "summary": "Submit an application; opens one case per submission reference",
+        "tags": [
+          "cases"
+        ]
+      }
+    },
     "/api/v1/auth/login": {
       "post": {
         "operationId": "login",
@@ -408,6 +1319,389 @@
         "summary": "Me",
         "tags": [
           "auth"
+        ]
+      }
+    },
+    "/api/v1/cases": {
+      "get": {
+        "operationId": "listCases",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "state",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/CaseState"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "State"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CasePage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not signed in"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Role not allowed"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not found or not visible to the caller"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "validation_failed"
+          }
+        },
+        "summary": "Cases with state, days remaining and at-risk flag, soonest deadline first",
+        "tags": [
+          "cases"
+        ]
+      }
+    },
+    "/api/v1/cases/{case_id}": {
+      "get": {
+        "operationId": "getCase",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "case_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Case Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaseDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not signed in"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Role not allowed"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not found or not visible to the caller"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "validation_failed"
+          }
+        },
+        "summary": "Case state, dates, outcome, coverage period and override",
+        "tags": [
+          "cases"
+        ]
+      }
+    },
+    "/api/v1/cases/{case_id}/history": {
+      "get": {
+        "operationId": "getCaseHistory",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "case_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Case Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Cursor",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaseHistoryPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not signed in"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Role not allowed"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not found or not visible to the caller"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "validation_failed"
+          }
+        },
+        "summary": "Case history with case-clock and real time, actor and reason",
+        "tags": [
+          "cases"
+        ]
+      }
+    },
+    "/api/v1/cases/{case_id}/review-tasks/{task_id}/actions": {
+      "post": {
+        "operationId": "submitReviewAction",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "case_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Case Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "task_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Task Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewActionBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Action accepted and signalled"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not signed in"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Role not allowed"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not found or not visible to the caller"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Action not allowed for this task or state; recorded as rejected"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "validation_failed"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Temporal unavailable"
+          }
+        },
+        "summary": "Caseworker action on an open review task",
+        "tags": [
+          "cases"
         ]
       }
     },

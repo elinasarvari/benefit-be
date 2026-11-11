@@ -26,6 +26,8 @@ MASKED_KEYS = frozenset(
         "street", "city", "zip", "dob", "date_of_birth", "birth_date", "ssn", "identity_number",
         "id_number", "document_text", "text", "content", "body", "password", "password_hash",
         "token", "tool_credential", "authorization", "cookie", "set-cookie", "api_key", "secret",
+        "employer", "relationship", "members", "form", "jobs", "line1", "line2", "postal_code",
+        "citizenship_status", "declared_monthly_gross",
     }
 )  # fmt: skip
 REQUEST_ID_HEADER = "x-request-id"  # carries the request reference ID API -> workflow -> activity

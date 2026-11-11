@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from enum import StrEnum
+from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
 
@@ -30,6 +31,7 @@ class ErrorBody(BaseModel):
     message: str
     fields: list[FieldError]
     reference_id: str
+    related_case_id: UUID | None = None
 
 
 class ErrorEnvelope(BaseModel):

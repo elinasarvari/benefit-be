@@ -22,6 +22,8 @@ from tests.integration.fixtures import open_client
 
 BASELINE = "0001_baseline"
 VERSION = "0002_review_queue"
+# 001's migrations come after this one and are rolled back and reapplied with it (ADR-001-11).
+LATER = ["0003_case_lifecycle", "0004_case_screens"]
 NOW = datetime(2026, 3, 2, 15, 0, tzinfo=UTC)
 BASELINE_VALIDATOR = {
     "$jsonSchema": {
@@ -192,13 +194,13 @@ async def test_FR_010_01_migration_0002_down_restores_baseline(ctx: MigrationCon
     finally:
         reapplied = await up(ctx)
 
-    assert reverted == [VERSION]
+    assert reverted == [*reversed(LATER), VERSION]
     assert task_validator == BASELINE_VALIDATOR
     assert action_validator == BASELINE_VALIDATOR
     assert not task_indexes & QUEUE_INDEXES
     assert not action_indexes & ACTION_INDEXES
     assert {"case_created", "household"} <= task_indexes
-    assert reapplied == [VERSION]
+    assert reapplied == [VERSION, *LATER]
     assert QUEUE_INDEXES <= await _index_names(ctx.db, "review_tasks")
     assert ACTION_INDEXES <= await _index_names(ctx.db, "caseworker_actions")
 

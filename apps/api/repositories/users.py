@@ -44,6 +44,13 @@ class UserRepository:
         )
         return LoginRecord(_to_public(doc), doc["password_hash"]) if doc else None
 
+    async def display_names(self, ids: list[UUID]) -> dict[UUID, str]:
+        """Display names of the given users in one `$in` read; unknown ids are left out."""
+        if not ids:
+            return {}
+        cursor = self._users.find({"_id": {"$in": list(set(ids))}}, {"_id": 1, "display_name": 1})
+        return {doc["_id"]: doc["display_name"] for doc in await cursor.to_list(length=len(ids))}
+
     async def get_public(self, user_id: UUID) -> UserPublic | None:
         doc = await self._users.find_one({"_id": user_id}, PUBLIC_FIELDS)
         return _to_public(doc) if doc else None

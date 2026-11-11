@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import sys
+from typing import Any
 
 import structlog
 from temporalio.client import Client
@@ -15,13 +16,18 @@ from temporalio.contrib.pydantic import pydantic_data_converter
 from temporalio.worker import Worker
 
 from apps.worker.activities.agent_step import AgentStepActivities, smoke_tool
+from apps.worker.activities.case_record import CaseRecordActivities
+from apps.worker.activities.determination import DeterminationActivities
 from apps.worker.activities.review_tasks import ReviewTaskActivities
 from apps.worker.activities.smoke import smoke_step
+from apps.worker.activities.verification import verify_documents
 from apps.worker.health import WorkerState, worker_checks
 from apps.worker.interceptors import ContextInterceptor
+from apps.worker.repositories.cases import CaseRepository
 from apps.worker.repositories.caseworker_actions import CaseworkerActionRepository
 from apps.worker.repositories.review_tasks import ReviewTaskRepository
-from apps.worker.workflows.review_harness import ReviewHarnessWorkflow
+from apps.worker.repositories.stub_results import MongoStubResults
+from apps.worker.workflows.case import CaseWorkflow
 from apps.worker.workflows.smoke import SmokeWorkflow
 from packages.platform.audit import MongoAuditWriter
 from packages.platform.clock import Clock, SystemClock
@@ -54,6 +60,11 @@ async def connect_with_backoff(settings: Settings) -> Client:
             delay = min(delay * 2, MAX_BACKOFF_S)
 
 
+# CaseWorkflow replaces 010's ReviewHarnessWorkflow, which stood in for it until 001 landed and
+# is kept for tests only (010 T009, T018; ADR-001-11).
+WORKFLOWS = [SmokeWorkflow, CaseWorkflow]
+
+
 def review_activities(settings: Settings, mongo: MongoClient, clock: Clock) -> ReviewTaskActivities:
     return ReviewTaskActivities(
         ReviewTaskRepository(mongo[settings.MONGO_DB], clock),
@@ -63,6 +74,28 @@ def review_activities(settings: Settings, mongo: MongoClient, clock: Clock) -> R
     )
 
 
+def build_activities(settings: Settings, clock: Clock, mongo: MongoClient) -> list[Any]:
+    """Every activity, built once per worker process (TW-12)."""
+    agent_steps = AgentStepActivities(settings, clock, smoke_tool(settings, clock))
+    audit = MongoAuditWriter(mongo, settings.MONGO_AUDIT_DB)
+    case_record = CaseRecordActivities(CaseRepository(mongo, settings.MONGO_DB, audit))
+    # Stub until 003 (research R1): the seeded result of each household.
+    determination = DeterminationActivities(MongoStubResults(mongo, settings.MONGO_DB))
+    # 010's review-task activities, for the review loop CaseWorkflow composes (010 T018).
+    review = review_activities(settings, mongo, clock)
+    return [
+        smoke_step,
+        agent_steps.run,
+        case_record.record_case_change,
+        verify_documents,
+        determination.determine_eligibility,
+        review.upsert_review_task,
+        review.set_review_flag,
+        review.close_review_task,
+        review.record_caseworker_action,
+    ]
+
+
 async def run_worker(settings: Settings) -> None:
     state = WorkerState()
     server = serve_health("worker", settings.WORKER_HEALTH_PORT, worker_checks(settings, state))
@@ -70,22 +103,11 @@ async def run_worker(settings: Settings) -> None:
     mongo = make_client(settings.MONGO_URL_APP.get_secret_value())
     try:
         client = await connect_with_backoff(settings)
-        clock = SystemClock()
-        agent_steps = AgentStepActivities(settings, clock, smoke_tool(settings, clock))
-        review = review_activities(settings, mongo, clock)
         worker = Worker(
             client,
             task_queue=settings.TEMPORAL_TASK_QUEUE,
-            # ReviewHarnessWorkflow stands in for 001's CaseWorkflow until it lands (010 T009).
-            workflows=[SmokeWorkflow, ReviewHarnessWorkflow],
-            activities=[
-                smoke_step,
-                agent_steps.run,
-                review.upsert_review_task,
-                review.set_review_flag,
-                review.close_review_task,
-                review.record_caseworker_action,
-            ],
+            workflows=WORKFLOWS,
+            activities=build_activities(settings, SystemClock(), mongo),
             interceptors=[ContextInterceptor()],
         )
         state.polling = True

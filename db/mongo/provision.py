@@ -20,10 +20,19 @@ from packages.platform.settings import load_settings
 
 Client = AsyncMongoClient[dict[str, Any]]
 REPLICA_SET = "rs0"
-HOST = "localhost:27017"
+DEFAULT_HOST = "localhost:27017"
 NOT_YET_INITIALIZED = 94
 UNAUTHORIZED = 13
 ALREADY_EXISTS = {51003, 51002}  # user / role already exists
+
+
+def host_of(url: str) -> str:
+    """The `host:port` of the MongoDB URL, so a mongod on another port (`make verify`) works."""
+    nodes = parse_uri(url)["nodelist"]
+    if not nodes:
+        return DEFAULT_HOST
+    host, port = nodes[0]
+    return f"{host}:{port}"
 
 
 def _password(url: str) -> str:
@@ -33,14 +42,14 @@ def _password(url: str) -> str:
     return unquote(password)
 
 
-async def _ensure_replica_set(client: Client) -> None:
+async def _ensure_replica_set(client: Client, host: str = DEFAULT_HOST) -> None:
     admin = client[ADMIN_DB]
     try:
         await admin.command("replSetGetStatus")
     except OperationFailure as exc:
         if exc.code != NOT_YET_INITIALIZED:
             raise
-        config = {"_id": REPLICA_SET, "members": [{"_id": 0, "host": HOST}]}
+        config = {"_id": REPLICA_SET, "members": [{"_id": 0, "host": host}]}
         await admin.command("replSetInitiate", config)
     for _ in range(60):
         if (await admin.command("hello")).get("isWritablePrimary"):
@@ -68,10 +77,11 @@ async def _provision(url_owner: str, url_app: str, db: str, audit_db: str) -> No
     owner_password, app_password = _password(url_owner), _password(url_app)
     pairs = database_pairs(db, audit_db)
 
-    bootstrap: Client = AsyncMongoClient(f"mongodb://{HOST}/?directConnection=true")
+    host = host_of(url_owner)
+    bootstrap: Client = AsyncMongoClient(f"mongodb://{host}/?directConnection=true")
     try:
         try:
-            await _ensure_replica_set(bootstrap)
+            await _ensure_replica_set(bootstrap, host)
         except OperationFailure as exc:
             if exc.code != UNAUTHORIZED:  # users exist already: the owner connection below works
                 raise

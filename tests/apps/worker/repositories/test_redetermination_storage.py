@@ -20,6 +20,7 @@ from packages.domain.case import (
 )
 from packages.platform.audit import MongoAuditWriter
 from packages.platform.mongo import Client, make_client
+from packages.platform.scope import Scope
 from packages.platform.settings import Settings
 from tests.apps.worker.case_factories import T0, case_document, event, new_ids
 
@@ -76,6 +77,10 @@ def renewal_change(
     )
 
 
+def scope_of(change: CaseChange) -> Scope:
+    return Scope.for_worker(change.case_id, change.household_id)
+
+
 async def test_FR_007_05_renew_writes_new_period_and_prior_status_in_one_transaction(
     client: Client, owner_url: str, integration_settings: Settings
 ) -> None:
@@ -94,13 +99,15 @@ async def test_FR_007_05_renew_writes_new_period_and_prior_status_in_one_transac
     repository = CaseRepository(client, integration_settings.MONGO_DB, audit)
 
     # Aborts: the prior period belongs to another household, so nothing at all is written.
+    change = renewal_change(case_id, household_id, prior, other_household=True)
     with pytest.raises(Exception):  # noqa: B017, PT011
-        await repository.apply(renewal_change(case_id, household_id, prior, other_household=True))
+        await repository.apply(change, scope_of(change))
     assert await db["coverage_periods"].count_documents({"case_id": case_id}) == 0
     assert await db["case_events"].count_documents({"case_id": case_id}) == 0
     assert (await db["coverage_periods"].find_one({"_id": prior.id}))["status"] == "active"
 
-    await repository.apply(renewal_change(case_id, household_id, prior, other_household=False))
+    change = renewal_change(case_id, household_id, prior, other_household=False)
+    await repository.apply(change, scope_of(change))
     assert (await db["coverage_periods"].find_one({"_id": prior.id}))["status"] == "renewed"
     renewed = await db["coverage_periods"].find_one({"case_id": case_id})
     assert renewed is not None and renewed["status"] == "active"

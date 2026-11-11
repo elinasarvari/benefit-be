@@ -7,8 +7,9 @@ from dataclasses import dataclass, field
 from decimal import ROUND_HALF_UP, Decimal
 from uuid import UUID
 
+from packages.domain.case import PayFrequency
 from packages.domain.eligibility import MissingItem, RuleSet
-from packages.domain.household import MemberFacts, PayFrequency, PayStubFact
+from packages.domain.household import MemberFacts, PayStubFact
 
 CENT = Decimal("0.01")
 _PERIODS_PER_YEAR = {

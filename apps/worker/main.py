@@ -20,13 +20,16 @@ from apps.worker.activities.case_record import CaseRecordActivities
 from apps.worker.activities.determination import DeterminationActivities
 from apps.worker.activities.review_tasks import ReviewTaskActivities
 from apps.worker.activities.smoke import smoke_step
+from apps.worker.activities.snapshot import SnapshotCapture
 from apps.worker.activities.verification import verify_documents
 from apps.worker.health import WorkerState, worker_checks
 from apps.worker.interceptors import ContextInterceptor
 from apps.worker.repositories.cases import CaseRepository
 from apps.worker.repositories.caseworker_actions import CaseworkerActionRepository
+from apps.worker.repositories.determinations import MongoDeterminationStore
 from apps.worker.repositories.review_tasks import ReviewTaskRepository
-from apps.worker.repositories.stub_results import MongoStubResults
+from apps.worker.repositories.snapshots import MongoSnapshotSource
+from apps.worker.repositories.verified_facts import SeededVerifications
 from apps.worker.workflows.case import CaseWorkflow
 from apps.worker.workflows.smoke import SmokeWorkflow
 from packages.platform.audit import MongoAuditWriter
@@ -74,13 +77,26 @@ def review_activities(settings: Settings, mongo: MongoClient, clock: Clock) -> R
     )
 
 
+def determination_activities(
+    settings: Settings, mongo: MongoClient, clock: Clock
+) -> DeterminationActivities:
+    """The rules engine over snapshots, interim seeded verifications and the determination store."""
+    capture = SnapshotCapture(
+        MongoSnapshotSource(mongo, settings.MONGO_DB),
+        SeededVerifications(mongo, settings.MONGO_DB),
+        clock,
+    )
+    return DeterminationActivities(
+        capture, MongoDeterminationStore(mongo, settings.MONGO_DB), clock
+    )
+
+
 def build_activities(settings: Settings, clock: Clock, mongo: MongoClient) -> list[Any]:
     """Every activity, built once per worker process (TW-12)."""
     agent_steps = AgentStepActivities(settings, clock, smoke_tool(settings, clock))
     audit = MongoAuditWriter(mongo, settings.MONGO_AUDIT_DB)
     case_record = CaseRecordActivities(CaseRepository(mongo, settings.MONGO_DB, audit))
-    # Stub until 003 (research R1): the seeded result of each household.
-    determination = DeterminationActivities(MongoStubResults(mongo, settings.MONGO_DB))
+    determination = determination_activities(settings, mongo, clock)
     # 010's review-task activities, for the review loop CaseWorkflow composes (010 T018).
     review = review_activities(settings, mongo, clock)
     return [

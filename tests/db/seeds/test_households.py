@@ -119,8 +119,10 @@ def test_FR_003_14_demo_users_link_to_their_scenario_households() -> None:
 
     assert result_a.result.value == "eligible"
     assert [s.frequency.value for s in household_a.years[2026].stubs] == ["weekly"]
+    # B shows the income-over-limit denial (FR-003-14, T015): documented income above the limit.
+    assert result_b.result.value == "ineligible"
     assert result_b.household_monthly_income is not None
-    assert result_b.household_monthly_income <= result_b.monthly_income_limit  # type: ignore[operator]
+    assert result_b.household_monthly_income > result_b.monthly_income_limit  # type: ignore[operator]
     assert any(r > Decimal("0.05") for r in _mismatch_ratios(household_b, 2026))
     assert "renewal-due" in household_b.scenarios
 
@@ -128,7 +130,7 @@ def test_FR_003_14_demo_users_link_to_their_scenario_households() -> None:
 def test_FR_003_16_seeded_members_carry_attested_residency_citizenship_and_medicare() -> None:
     for household in dataset().households:
         for year, data in household.years.items():
-            assert Counter(m.relationship for m in data.members)["self"] == 1
+            assert Counter(m.relationship.value for m in data.members)["self"] == 1
             for member in data.members:
                 assert member.coverage_year == year
                 assert member.household_id == household.household_id

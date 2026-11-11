@@ -6,6 +6,7 @@
       "snapshot_id": "3b3bae48-5b32-58db-9829-e283c7aaf882",
       "household_id": "6966a053-9646-51ed-a765-bd199acfc52f",
       "case_id": "67e7b584-452f-5b56-bd42-43882c7a85cd",
+      "as_of_date": "2026-06-01",
       "captured_at": "2026-05-30T12:00:00Z",
       "members": [
         {
@@ -56,6 +57,7 @@
       "snapshot_id": "6157d004-c99e-5e83-8154-e8b45d7bae1c",
       "household_id": "1814692e-42ea-5429-9aa2-c9477d2c8fd1",
       "case_id": "d0c0feb8-562a-5f2d-ba53-493428af3022",
+      "as_of_date": "2026-06-01",
       "captured_at": "2026-05-30T12:00:00Z",
       "members": [
         {
@@ -101,6 +103,7 @@
       "snapshot_id": "497d9943-ca60-5f59-bdd1-c675b417873a",
       "household_id": "6a902686-a6e3-5d1b-8fbe-493fd4229d88",
       "case_id": "5e99d0c7-5de0-51e1-adff-bc6b1ac46202",
+      "as_of_date": "2026-06-01",
       "captured_at": "2026-05-30T12:00:00Z",
       "members": [
         {
@@ -146,6 +149,7 @@
       "snapshot_id": "86acaa70-80cb-58f8-8ceb-ae04850688ba",
       "household_id": "e641e692-38cb-5f25-b8fe-44a0c0b5c120",
       "case_id": "70f540cc-f845-5134-a5f1-e7842029595d",
+      "as_of_date": "2026-06-01",
       "captured_at": "2026-05-30T12:00:00Z",
       "members": [
         {
@@ -191,6 +195,7 @@
       "snapshot_id": "9a29af6b-cb36-5898-984b-eb17e940fbd8",
       "household_id": "ba41a123-6749-580e-b729-5e3602d93d40",
       "case_id": "e3e71796-7419-5b34-a0d1-98f23bc1a197",
+      "as_of_date": "2026-06-01",
       "captured_at": "2026-05-30T12:00:00Z",
       "members": [
         {
@@ -236,6 +241,7 @@
       "snapshot_id": "d6b92e30-d797-50e4-b3a0-42ebb335f872",
       "household_id": "edd06d4a-2146-5efe-ab82-2b659d19b222",
       "case_id": "1a980a76-49ad-52ce-97e2-1c83b39d0978",
+      "as_of_date": "2026-06-01",
       "captured_at": "2026-05-30T12:00:00Z",
       "members": [
         {
@@ -281,6 +287,7 @@
       "snapshot_id": "dda7a10f-4764-5813-9c37-6cdd85d2b58b",
       "household_id": "a7d3bd37-be1c-5b55-a058-63a7ab89ef78",
       "case_id": "c1e043e1-9331-5d40-90a6-6ae140bf997f",
+      "as_of_date": "2026-06-01",
       "captured_at": "2026-05-30T12:00:00Z",
       "members": [
         {
@@ -334,6 +341,7 @@
       "snapshot_id": "b1fca2a2-4ec9-57af-a03e-904057067842",
       "household_id": "e217ab67-9ac0-5557-9764-d41e72fc3a18",
       "case_id": "c00341f5-0dd2-50c1-a2d3-6c5ac838c29e",
+      "as_of_date": "2026-06-01",
       "captured_at": "2026-05-30T12:00:00Z",
       "members": [
         {
@@ -379,6 +387,7 @@
       "snapshot_id": "1711ee75-1f52-59b0-8217-e8c9d823aaeb",
       "household_id": "7c3ac531-c7df-55a7-9cb1-6911868f54b0",
       "case_id": "1c3fb1d5-6a56-5ddf-9c4e-67b28c7bddfe",
+      "as_of_date": "2026-06-01",
       "captured_at": "2026-05-30T12:00:00Z",
       "members": [
         {
@@ -424,6 +433,7 @@
       "snapshot_id": "1122ac66-511c-5798-bffe-bd03373513a5",
       "household_id": "d63d4e8c-7129-52c6-bb1d-f4f912b2a34b",
       "case_id": "64f6b2b9-65e9-5914-b172-2a0376e8061b",
+      "as_of_date": "2026-06-01",
       "captured_at": "2026-05-30T12:00:00Z",
       "members": [
         {
@@ -469,6 +479,7 @@
       "snapshot_id": "99ded005-4663-5780-aade-05261a4de8a6",
       "household_id": "b5bf042d-4614-5290-9777-ca1767c24111",
       "case_id": "f3ead110-c634-5b91-a735-54d3f3701de0",
+      "as_of_date": "2026-06-01",
       "captured_at": "2026-05-30T12:00:00Z",
       "members": [
         {
@@ -507,6 +518,7 @@
       "snapshot_id": "1e5e0222-87a1-56d9-8c6a-e161ca495fb5",
       "household_id": "e53574dc-3174-51a5-a183-581174199dea",
       "case_id": "83e71964-7e38-5051-b569-8a71f827d5cc",
+      "as_of_date": "2026-06-01",
       "captured_at": "2026-05-30T12:00:00Z",
       "members": [
         {
@@ -544,6 +556,7 @@
       "snapshot_id": "5dee3d31-daba-5c4a-bffe-ac44d288b885",
       "household_id": "983a4cf4-b9ad-5eb5-b0fb-456476631233",
       "case_id": "3364629b-be44-55b0-a68c-8c8d03f01df7",
+      "as_of_date": "2026-06-01",
       "captured_at": "2026-05-30T12:00:00Z",
       "members": [
         {
@@ -595,6 +608,7 @@
       "snapshot_id": "f9f81d1a-5f21-50ad-bd27-a03537c481cc",
       "household_id": "dba81807-7bdf-5aa2-8c4e-46b96dd77e5b",
       "case_id": "2a9a5173-9e5f-5076-8e20-4b82489b1cc0",
+      "as_of_date": "2026-06-01",
       "captured_at": "2026-05-30T12:00:00Z",
       "members": [
         {
@@ -640,6 +654,7 @@
       "snapshot_id": "ba00dc4c-3be9-5d1c-8ba8-36b2297ba3d5",
       "household_id": "68cc1d30-0027-576a-bec7-3f6f761f8453",
       "case_id": "b032f252-e025-58c6-ac8f-6915c2a46f44",
+      "as_of_date": "2026-06-01",
       "captured_at": "2026-05-30T12:00:00Z",
       "members": [
         {
@@ -683,6 +698,7 @@
       "snapshot_id": "17dcfbb0-f073-5beb-91d3-ac53e9caea4a",
       "household_id": "f854765e-46c3-544b-b110-b21dc0a42f2c",
       "case_id": "15371e48-83a6-5862-b863-76701c3191e6",
+      "as_of_date": "2026-06-01",
       "captured_at": "2026-05-30T12:00:00Z",
       "members": [
         {
@@ -728,6 +744,7 @@
       "snapshot_id": "0692de29-2a97-5471-84fb-a7641f3a250f",
       "household_id": "72c3d7ec-2439-5244-9b05-64e111187628",
       "case_id": "c2fcda27-80e4-5eb0-b36e-a2d57b5cb75f",
+      "as_of_date": "2026-06-01",
       "captured_at": "2026-05-30T12:00:00Z",
       "members": [
         {
@@ -773,6 +790,7 @@
       "snapshot_id": "3aaf1aa6-d199-5ba4-97c0-d3813b890cc3",
       "household_id": "e4890a3a-5bfc-59b3-a6cd-004219306c24",
       "case_id": "6a42ac1b-3d53-5995-830a-d0b9bf703f42",
+      "as_of_date": "2026-06-01",
       "captured_at": "2026-05-30T12:00:00Z",
       "members": [
         {
@@ -816,6 +834,7 @@
       "snapshot_id": "15f58eeb-6dcd-579a-bd2a-bd7f871b6d1b",
       "household_id": "9febaf22-bc87-5e40-942e-40fb932de2b8",
       "case_id": "d62ffaea-2a7f-581e-8405-fe3745f61b59",
+      "as_of_date": "2026-06-01",
       "captured_at": "2026-05-30T12:00:00Z",
       "members": [
         {
@@ -847,6 +866,7 @@
       "snapshot_id": "47454207-1f05-5ba7-b513-fb474c481293",
       "household_id": "3d034853-fd36-54d1-8c0a-9603cef4db84",
       "case_id": "c9d83c88-2ed5-5f0d-b496-33ee392e1bde",
+      "as_of_date": "2026-06-01",
       "captured_at": "2026-05-30T12:00:00Z",
       "members": [
         {
@@ -894,6 +914,7 @@
       "snapshot_id": "e57c1287-ad8c-5944-bb5a-a07be04aeb0d",
       "household_id": "2a594897-75ee-5ec4-9977-a9383c41f983",
       "case_id": "fce6e563-5a9d-5ca0-8bc7-3539279daef6",
+      "as_of_date": "2026-06-01",
       "captured_at": "2026-05-30T12:00:00Z",
       "members": [
         {
@@ -938,6 +959,7 @@
       "snapshot_id": "f7f352b9-051f-5efa-a7bc-9b2c093756f7",
       "household_id": "7c60030f-20ed-5434-9283-f01f0f8f0f65",
       "case_id": "5edd27e8-591d-59d9-bda0-b06c3b141ba6",
+      "as_of_date": "2026-06-01",
       "captured_at": "2026-05-30T12:00:00Z",
       "members": [
         {
@@ -983,6 +1005,7 @@
       "snapshot_id": "089e97b6-d6ae-5662-9df8-52e8f0bc7df0",
       "household_id": "9ecdb2cd-1154-5203-a1d0-39c8f3e2a346",
       "case_id": "0bfc1b6c-8e69-59f9-b682-c45f67c0313b",
+      "as_of_date": "2026-06-01",
       "captured_at": "2026-05-30T12:00:00Z",
       "members": [
         {
@@ -1026,6 +1049,7 @@
       "snapshot_id": "30fb44c8-153b-5640-8909-b12785235332",
       "household_id": "d61770b3-e179-597e-9f31-a1c307a18318",
       "case_id": "4a609019-e003-5c8c-8b66-1f57be82e992",
+      "as_of_date": "2026-06-01",
       "captured_at": "2026-05-30T12:00:00Z",
       "members": [
         {
@@ -1069,6 +1093,7 @@
       "snapshot_id": "f4b35834-32bc-5d0d-93a9-c1e41ddce791",
       "household_id": "b913da22-fffd-588d-ba60-e3646354313b",
       "case_id": "85eba25d-e0a3-5d27-a110-77e726c335e9",
+      "as_of_date": "2026-06-01",
       "captured_at": "2026-05-30T12:00:00Z",
       "members": [
         {
@@ -1123,6 +1148,7 @@
       "snapshot_id": "c2c3ca2a-148d-59a3-a889-19a3c318914f",
       "household_id": "31753b63-1b1f-5f11-825f-572306142c04",
       "case_id": "8e20aa7e-2fc9-5d2c-a595-1c8848a5c0dc",
+      "as_of_date": "2026-06-01",
       "captured_at": "2026-05-30T12:00:00Z",
       "members": [
         {
@@ -1189,6 +1215,7 @@
       "snapshot_id": "68d85bae-500e-5802-acbf-2159f2b25269",
       "household_id": "6cc2fd5f-f355-51de-be95-f969eb4b85ef",
       "case_id": "03e16a92-ea92-554f-9cf8-1c820a849059",
+      "as_of_date": "2026-06-01",
       "captured_at": "2026-05-30T12:00:00Z",
       "members": [
         {
@@ -1238,6 +1265,7 @@
       "snapshot_id": "e77f97d6-db18-5d0c-9a96-e84d817e7680",
       "household_id": "820960da-c3b0-5f39-b091-ad7b748d2f35",
       "case_id": "c9faca16-112c-56df-baf5-bb4bd2bcec37",
+      "as_of_date": "2026-06-01",
       "captured_at": "2026-05-30T12:00:00Z",
       "members": [
         {
@@ -1292,6 +1320,7 @@
       "snapshot_id": "44027538-1c80-5459-bbf0-b3e5707e4af3",
       "household_id": "53c58779-cf70-5c37-83aa-362e96f61d5c",
       "case_id": "ffa85e42-34eb-5c85-89c1-1dee8a4e083a",
+      "as_of_date": "2025-06-01",
       "captured_at": "2026-05-30T12:00:00Z",
       "members": [
         {
@@ -1342,6 +1371,7 @@
       "snapshot_id": "abad5b15-3106-56ad-a8b4-4e8212dabda5",
       "household_id": "8245e75a-2801-5a69-b85a-565433efb608",
       "case_id": "c495259d-ffb2-5400-b502-e72b1dace2f0",
+      "as_of_date": "2026-06-01",
       "captured_at": "2026-05-30T12:00:00Z",
       "members": [
         {
@@ -1397,6 +1427,7 @@
       "snapshot_id": "8fc2f15a-3256-596c-8827-e0674ee03db3",
       "household_id": "70618981-e425-5342-9382-c8a261512315",
       "case_id": "bb051492-c3c6-5cff-b89a-ab8dffb0494c",
+      "as_of_date": "2025-06-01",
       "captured_at": "2026-05-30T12:00:00Z",
       "members": [
         {
@@ -1443,6 +1474,7 @@
       "snapshot_id": "7fa8de06-6e61-5d74-9f78-cbe45ee3c054",
       "household_id": "12ba1ff6-6fbb-5176-9d92-99c6bc9c9995",
       "case_id": "9638d87a-8b95-5a2d-8b9f-27e1d9c041f3",
+      "as_of_date": "2026-06-01",
       "captured_at": "2026-05-30T12:00:00Z",
       "members": [
         {
@@ -1487,6 +1519,7 @@
       "snapshot_id": "c2fba6fe-f0e3-5eaa-ab6e-16567f0b95ab",
       "household_id": "06e1e2d0-eac7-5a5e-b3ef-48c3f0652a51",
       "case_id": "a13dc96a-e53d-59f0-b0aa-8dbcb8aad3e3",
+      "as_of_date": "2025-01-01",
       "captured_at": "2026-05-30T12:00:00Z",
       "members": [
         {
@@ -1531,6 +1564,7 @@
       "snapshot_id": "80ad3999-49e9-5059-8ec1-f1d5d6bfac1f",
       "household_id": "684f375b-5fe2-505f-82cb-1f3d3398e1ef",
       "case_id": "ec031007-34a6-5e1f-abe1-045c509a7798",
+      "as_of_date": "2025-12-31",
       "captured_at": "2026-05-30T12:00:00Z",
       "members": [
         {
@@ -1575,6 +1609,7 @@
       "snapshot_id": "b8927511-79f2-5a8d-bc08-f933520c0430",
       "household_id": "e1a5f48c-2458-5a7a-9054-bb29a04a2bf1",
       "case_id": "3db99471-2c7f-5d83-8d3f-0fe980725a69",
+      "as_of_date": "2026-01-01",
       "captured_at": "2026-05-30T12:00:00Z",
       "members": [
         {
@@ -1619,6 +1654,7 @@
       "snapshot_id": "f4654b63-c648-560b-a15b-606e91ab1725",
       "household_id": "40cde9e2-6e71-5c26-8d56-1263100c2f21",
       "case_id": "c3d476f8-b3b4-5374-843d-cace89c09f00",
+      "as_of_date": "2026-12-31",
       "captured_at": "2026-05-30T12:00:00Z",
       "members": [
         {
@@ -1663,6 +1699,7 @@
       "snapshot_id": "58d93598-1214-5e6a-8454-7973f864cb0b",
       "household_id": "09d30447-107b-5f8b-8a2e-e1ce8b231f6e",
       "case_id": "04100194-a67a-58fa-8d8e-32cfdfc7bcb4",
+      "as_of_date": "2024-12-31",
       "captured_at": "2026-05-30T12:00:00Z",
       "members": [
         {
@@ -1711,6 +1748,7 @@
       "snapshot_id": "6cdf97fc-3ea7-5ffe-a0fe-61d27f2a899c",
       "household_id": "b0f56c60-7b69-5976-81bf-b018eef2270b",
       "case_id": "f8b26e7c-b2d5-59e7-994f-80908e1b95ff",
+      "as_of_date": "2027-01-01",
       "captured_at": "2026-05-30T12:00:00Z",
       "members": [
         {

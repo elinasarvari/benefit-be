@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+import tomllib
 from pathlib import Path
 from typing import Any
 
@@ -42,6 +43,33 @@ def test_FR_000_20_ci_never_uses_a_live_model() -> None:
     assert env["APP_ENV"] == "test"
     assert str(env["TRACING_ENABLED"]).lower() == "false"
     assert "ANTHROPIC_API_KEY" not in (WORKFLOWS / "ci.yml").read_text()
+
+
+def test_every_secrets_scan_uses_the_narrow_gitleaks_config() -> None:
+    root = WORKFLOWS.parents[1]
+    sources = {
+        "Makefile": (root / "Makefile").read_text(),
+        "ci.yml": run_commands(load("ci.yml")["jobs"]["static"]),
+        "scripts/verify.py": (root / "scripts" / "verify.py").read_text(),
+    }
+    for name, text in sources.items():
+        calls = re.findall(r"gitleaks detect[^\n\"]*", text)
+        assert calls, name
+        for call in calls:
+            assert "--config scripts/gitleaks.toml" in call and "--log-opts=HEAD" in call, name
+
+    config = tomllib.loads((root / "scripts" / "gitleaks.toml").read_text())
+    assert config["extend"] == {"useDefault": True}
+    path_only = [a for a in config["allowlists"] if "regexes" not in a]
+    assert [a["paths"] for a in path_only] == [[r"\.env\.example$"]]
+    (labels,) = [a for a in config["allowlists"] if "regexes" in a]
+    assert labels["targetRules"] == ["generic-api-key"]
+    assert labels["condition"] == "AND"
+    assert labels["regexTarget"] == "match"
+    (pattern,) = labels["regexes"]
+    assert re.search(pattern, 'case_key": "KA-02-elig01-out-of-state"')
+    # Synthetic key-shaped value: proves real keys are still reported.
+    assert not re.search(pattern, 'api_key": "sk-3f9a8b7c6d5e4f3a2b1c"')  # gitleaks:allow
 
 
 def test_every_job_has_a_timeout_and_every_action_is_pinned_by_sha() -> None:

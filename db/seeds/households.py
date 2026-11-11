@@ -17,13 +17,13 @@ from pydantic import BaseModel, ConfigDict
 
 from db.seeds.ids import HOUSEHOLD_A, HOUSEHOLD_B, HOUSEHOLD_C, rng, seeded_id
 from db.seeds.names import EMPLOYERS, FAMILY_NAMES, GIVEN_NAMES, OTHER_STATES
+from packages.domain.case import PayFrequency
 from packages.domain.household import (
     HouseholdMember,
     HouseholdSnapshot,
     Job,
     JobIncome,
     MemberFacts,
-    PayFrequency,
     PayStubFact,
 )
 from packages.rules.income import monthly_income_from_stub, monthly_limit
@@ -100,7 +100,9 @@ class _Plan:
 def _plan(quota: random.Random) -> list[_Plan]:
     kinds = list(_KINDS)
     quota.shuffle(kinds)
-    kinds = ["under", "under", *kinds]
+    # A is under the limit (eligible), B over it (ineligible), C is the first "missing" household
+    # (declared job without a usable stub, cannot determine), FR-003-14.
+    kinds = ["under", "over", *kinds]
     sizes = list(_SIZES)
     sizes.remove(2)
     sizes.remove(3)
@@ -346,6 +348,7 @@ def snapshot_for(
     *,
     case_id: UUID | None = None,
     captured_at: datetime = CAPTURED_AT,
+    as_of_date: date | None = None,
 ) -> HouseholdSnapshot:
     """The engine's view of one household-year: stored members plus their documented stubs."""
     data = household.years[year]
@@ -377,6 +380,7 @@ def snapshot_for(
         snapshot_id=seeded_id(f"snapshot-{household.seed_key}-{year}"),
         household_id=household.household_id,
         case_id=case_id or seeded_id(f"case-{household.seed_key}-{year}"),
+        as_of_date=as_of_date or date(year, 6, 1),
         captured_at=captured_at,
         members=members,
     )

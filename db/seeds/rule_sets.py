@@ -19,4 +19,5 @@ def rule_set_documents() -> list[dict[str, Any]]:
 
 async def seed_rule_sets(db: Any) -> None:
     for document in rule_set_documents():
-        await db["rule_sets"].replace_one({"_id": document["_id"]}, document, upsert=True)
+        marked = {**document, "synthetic": True}
+        await db["rule_sets"].replace_one({"_id": document["_id"]}, marked, upsert=True)

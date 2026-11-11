@@ -77,6 +77,7 @@ def snapshot(
         snapshot_id=uid("snapshot"),
         household_id=uid("household"),
         case_id=uid("case"),
+        as_of_date=date(2026, 5, 30),
         captured_at=captured_at,
         members=[member()] if members is None else members,
     )
@@ -132,6 +133,7 @@ def snapshots(draw: st.DrawFn) -> HouseholdSnapshot:
         snapshot_id=draw(st.uuids(version=4)),
         household_id=draw(st.uuids(version=4)),
         case_id=draw(st.uuids(version=4)),
+        as_of_date=date(2026, 5, 30),
         captured_at=datetime(2026, 5, 30, tzinfo=UTC),
         members=people,
     )

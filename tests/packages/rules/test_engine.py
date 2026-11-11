@@ -7,7 +7,8 @@ import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 
-from packages.domain.eligibility import EligibilityResult, RuleId, RuleOutcome
+from packages.domain.case import DeterminationOutcome
+from packages.domain.eligibility import RuleId, RuleOutcome
 from packages.domain.household import PayFrequency
 from packages.rules import ENGINE_VERSION, evaluate
 from tests.packages.rules.conftest import (
@@ -28,7 +29,7 @@ ORDER = list(RuleId)
 def test_FR_003_01_household_meeting_every_rule_is_eligible() -> None:
     result = evaluate(eligible_snapshot(), AS_OF)
 
-    assert result.result is EligibilityResult.eligible
+    assert result.result is DeterminationOutcome.eligible
     assert result.missing_items == []
     assert result.household_size == 1
     assert result.household_monthly_income == Decimal("1300.00")
@@ -43,7 +44,7 @@ def test_FR_003_02_result_is_always_eligible_ineligible_or_cannot_determine(
 ) -> None:
     result = evaluate(household, as_of)  # type: ignore[arg-type]
 
-    assert result.result in set(EligibilityResult)
+    assert result.result in set(DeterminationOutcome)
 
 
 @pytest.mark.parametrize(
@@ -59,7 +60,7 @@ def test_FR_003_03_missing_fact_gives_cannot_determine_listing_item_not_ineligib
 ) -> None:
     result = evaluate(snapshot([member(**{fact: None})]), AS_OF)  # type: ignore[arg-type]
 
-    assert result.result is EligibilityResult.cannot_determine
+    assert result.result is DeterminationOutcome.cannot_determine
     assert [m.item for m in result.missing_items] == [item]
     assert result.missing_items[0].member_id == uid("member-self")
 
@@ -67,7 +68,7 @@ def test_FR_003_03_missing_fact_gives_cannot_determine_listing_item_not_ineligib
 def test_FR_003_03_job_without_stub_is_missing_pay_stub() -> None:
     result = evaluate(snapshot([member(jobs=[job("j", [])])]), AS_OF)
 
-    assert result.result is EligibilityResult.cannot_determine
+    assert result.result is DeterminationOutcome.cannot_determine
     assert [(m.item, m.job_id) for m in result.missing_items] == [("pay_stub", uid("j"))]
     assert result.household_monthly_income is None
 
@@ -85,7 +86,7 @@ def test_FR_003_03_removing_information_from_eligible_household_never_gives_inel
 
     result = evaluate(snapshot([member(**changes)]), AS_OF)  # type: ignore[arg-type]
 
-    assert result.result is EligibilityResult.cannot_determine
+    assert result.result is DeterminationOutcome.cannot_determine
 
 
 @given(snapshots(), as_of_dates)
@@ -115,7 +116,7 @@ def test_FR_003_19_size_is_member_count_and_captured_at_does_not_change_result()
 def test_FR_003_20_failed_rule_plus_missing_info_is_ineligible_listing_missing_item() -> None:
     result = evaluate(snapshot([member(address_state="WI", citizenship_attested=None)]), AS_OF)
 
-    assert result.result is EligibilityResult.ineligible
+    assert result.result is DeterminationOutcome.ineligible
     assert [m.item for m in result.missing_items] == ["citizenship_attested"]
     outcomes = {r.rule_id: r.outcome for r in result.rule_results}
     assert outcomes[RuleId.ELIG_01] is RuleOutcome.fail
@@ -130,13 +131,13 @@ def test_FR_003_20_result_follows_fail_then_missing_then_eligible_precedence(
     outcomes = [r.outcome for r in result.rule_results]
 
     if result.rule_set_id is None:
-        assert result.result is EligibilityResult.cannot_determine
+        assert result.result is DeterminationOutcome.cannot_determine
     elif RuleOutcome.fail in outcomes:
-        assert result.result is EligibilityResult.ineligible
+        assert result.result is DeterminationOutcome.ineligible
     elif RuleOutcome.missing in outcomes:
-        assert result.result is EligibilityResult.cannot_determine
+        assert result.result is DeterminationOutcome.cannot_determine
     else:
-        assert result.result is EligibilityResult.eligible
+        assert result.result is DeterminationOutcome.eligible
 
 
 # --- US2: trace ---------------------------------------------------------------------------
@@ -148,7 +149,7 @@ def test_FR_003_05_income_ineligible_trace_shows_income_size_limit_year_and_poli
     result = evaluate(household, AS_OF)
 
     income = result.rule_results[5]
-    assert result.result is EligibilityResult.ineligible
+    assert result.result is DeterminationOutcome.ineligible
     assert income.rule_id is RuleId.ELIG_06
     assert income.outcome is RuleOutcome.fail
     assert income.threshold == "1782"
@@ -229,7 +230,7 @@ def test_FR_003_07_date_without_rule_set_gives_cannot_determine_no_rules_for_dat
 ) -> None:
     result = evaluate(eligible_snapshot(), day)
 
-    assert result.result is EligibilityResult.cannot_determine
+    assert result.result is DeterminationOutcome.cannot_determine
     assert (result.rule_set_id, result.rule_set_version) == (None, None)
     assert [(m.item, m.reason) for m in result.missing_items] == [("rule_set", "no rules for date")]
     assert result.monthly_income_limit is None
@@ -243,6 +244,6 @@ def test_FR_003_07_date_without_rule_set_gives_cannot_determine_no_rules_for_dat
 def test_FR_003_16_no_self_member_is_cannot_determine_with_applicant_missing() -> None:
     result = evaluate(snapshot([member("s", relationship="spouse")]), AS_OF)
 
-    assert result.result is EligibilityResult.cannot_determine
+    assert result.result is DeterminationOutcome.cannot_determine
     assert [m.item for m in result.missing_items] == ["applicant"]
     assert len(result.rule_results) == 6

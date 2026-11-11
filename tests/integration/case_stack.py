@@ -32,11 +32,10 @@ from temporalio.worker import Worker
 
 from apps.api.main import create_app
 from apps.worker.activities.case_record import CaseRecordActivities
-from apps.worker.activities.determination import DeterminationActivities, FixedStubResults
 from apps.worker.activities.verification import verify_documents
+from apps.worker.main import determination_activities
 from apps.worker.repositories.cases import CaseRepository
 from apps.worker.workflows.case import CaseWorkflow
-from db.seeds.generate import STUB_RESULTS
 from db.seeds.ids import HOUSEHOLD_A, HOUSEHOLD_B, HOUSEHOLD_C, seeded_id
 from db.seeds.users import DEMO_ACCOUNTS
 from packages.domain.auth import Role, UserPublic
@@ -116,10 +115,10 @@ async def mongo(settings: Settings) -> AsyncIterator[MongoClient]:
 
 
 def case_activities(settings: Settings, client: MongoClient) -> list[Callable[..., Any]]:
-    """The worker's case activities, with the stub answering by the seeded household result."""
+    """The worker's case activities: the real determination over the seeded households (003)."""
     audit = MongoAuditWriter(client, settings.MONGO_AUDIT_DB)
     record = CaseRecordActivities(CaseRepository(client, settings.MONGO_DB, audit))
-    determination = DeterminationActivities(FixedStubResults(STUB_RESULTS))
+    determination = determination_activities(settings, client, SystemClock())
     return [record.record_case_change, verify_documents, determination.determine_eligibility]
 
 

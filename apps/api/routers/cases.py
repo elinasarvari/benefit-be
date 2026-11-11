@@ -6,7 +6,12 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Query, Request, Response
 
 from apps.api.dependencies.auth import request_id, require_roles
-from apps.api.dependencies.cases import get_case_repository, get_case_workflows, get_user_names
+from apps.api.dependencies.cases import (
+    get_case_repository,
+    get_case_workflows,
+    get_determination_repository,
+    get_user_names,
+)
 from apps.api.dependencies.db import get_audit_writer, get_clock
 from apps.api.schemas.cases import (
     CaseDetail,
@@ -15,7 +20,9 @@ from apps.api.schemas.cases import (
     CaseState,
     ReviewActionBody,
 )
+from apps.api.schemas.determinations import DeterminationList
 from apps.api.services import cases as cases_service
+from apps.api.services import determinations as determinations_service
 from packages.domain.auth import Principal, Role
 from packages.domain.errors import ErrorEnvelope
 from packages.platform.audit import AuditWriter
@@ -106,6 +113,34 @@ async def get_case_history(
 ) -> CaseHistoryPage:
     return await cases_service.get_case_history(
         case_id, principal, repo=repo, users=users, cursor=cursor, limit=limit
+    )
+
+
+@router.get(
+    "/{case_id}/determinations",
+    operation_id="listCaseDeterminations",
+    responses=COMMON,
+    summary="Determinations of a case, newest first, with the per-rule trace (FR-003-23)",
+)
+async def list_case_determinations(
+    case_id: UUID,
+    request: Request,
+    principal: Annotated[Principal, Depends(require_roles(Role.caseworker))],
+    cases: Annotated[cases_service.CaseRepository, Depends(get_case_repository)],
+    determinations: Annotated[
+        determinations_service.DeterminationReader, Depends(get_determination_repository)
+    ],
+    audit: Annotated[AuditWriter, Depends(get_audit_writer)],
+    clock: Annotated[Clock, Depends(get_clock)],
+) -> DeterminationList:
+    return await determinations_service.list_case_determinations(
+        case_id,
+        principal,
+        cases=cases,
+        determinations=determinations,
+        audit=audit,
+        clock=clock,
+        reference_id=request_id(request),
     )
 
 

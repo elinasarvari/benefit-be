@@ -8,7 +8,8 @@ from decimal import Decimal
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from packages.domain.eligibility import EligibilityResult, RuleId, RuleOutcome
+from packages.domain.case import DeterminationOutcome
+from packages.domain.eligibility import RuleId, RuleOutcome
 from packages.domain.household import MemberFacts
 from packages.rules.engine import evaluate
 from packages.rules.income import monthly_limit
@@ -41,15 +42,11 @@ def test_FR_003_01_property_income_at_or_below_limit_passes_income_rule(
     rule_set, size, where
 ) -> None:
     limit = monthly_limit(rule_set, size)
-    gross = {"at": limit, "below": limit - Decimal("0.01"), "above": limit + Decimal("0.01")}[
-        where
-    ]
+    gross = {"at": limit, "below": limit - Decimal("0.01"), "above": limit + Decimal("0.01")}[where]
     # One monthly stub on the applicant so income equals `gross` exactly.
     from tests.packages.rules.conftest import job, stub
 
-    earner = member(
-        "self", jobs=[job("j", [stub("monthly", gross, rule_set.effective_from)])]
-    )
+    earner = member("self", jobs=[job("j", [stub("monthly", gross, rule_set.effective_from)])])
     others = [
         member(f"m{i}", relationship="child", jobs=[], declared_zero_income=True)
         for i in range(size - 1)
@@ -70,14 +67,14 @@ def test_FR_003_20_property_any_fail_gives_ineligible_and_missing_only_gives_can
     outcomes = {r.outcome for r in result.rule_results}
 
     if rule_set_for(as_of) is None:
-        assert result.result is EligibilityResult.cannot_determine
+        assert result.result is DeterminationOutcome.cannot_determine
     elif RuleOutcome.fail in outcomes:
-        assert result.result is EligibilityResult.ineligible
+        assert result.result is DeterminationOutcome.ineligible
     elif RuleOutcome.missing in outcomes:
-        assert result.result is EligibilityResult.cannot_determine
+        assert result.result is DeterminationOutcome.cannot_determine
         assert result.missing_items
     else:
-        assert result.result is EligibilityResult.eligible
+        assert result.result is DeterminationOutcome.eligible
 
 
 @settings(max_examples=100, derandomize=True)
@@ -92,5 +89,5 @@ def test_FR_003_08_property_evaluate_leaves_snapshot_unchanged(snap, as_of) -> N
 
 def test_FR_003_20_property_helper_sanity_eligible_snapshot_is_eligible() -> None:
     """Guards the helpers the properties rely on: the base snapshot is Eligible."""
-    assert evaluate(eligible_snapshot(), date(2026, 6, 1)).result is EligibilityResult.eligible
+    assert evaluate(eligible_snapshot(), date(2026, 6, 1)).result is DeterminationOutcome.eligible
     assert isinstance(member(), MemberFacts)

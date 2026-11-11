@@ -13,6 +13,7 @@ from packages.domain.household import (
     MemberFacts,
     PayFrequency,
     PayStubFact,
+    VerifiedMemberFacts,
 )
 
 MEMBER_ID = UUID("00000000-0000-5000-8000-000000000001")
@@ -49,6 +50,7 @@ def _snapshot() -> HouseholdSnapshot:
         snapshot_id=UUID("00000000-0000-5000-8000-000000000005"),
         household_id=HOUSEHOLD_ID,
         case_id=UUID("00000000-0000-5000-8000-000000000006"),
+        as_of_date=date(2026, 11, 10),
         captured_at=datetime(2026, 11, 10, tzinfo=UTC),
         members=[_member_facts()],
     )
@@ -115,3 +117,27 @@ def test_FR_003_19_snapshot_round_trips_through_json() -> None:
     snapshot = _snapshot()
 
     assert HouseholdSnapshot.model_validate_json(snapshot.model_dump_json()) == snapshot
+
+
+def test_FR_003_17_verified_member_facts_round_trips_and_forbids_extra() -> None:
+    facts = VerifiedMemberFacts(
+        household_id=HOUSEHOLD_ID,
+        member_id=MEMBER_ID,
+        identity_verified=True,
+        jobs=[
+            JobIncome(job_id=JOB_ID, stubs=[_stub()]),
+            JobIncome(job_id=UUID("00000000-0000-5000-8000-000000000007"), stubs=[]),
+        ],
+    )
+
+    assert VerifiedMemberFacts.model_validate_json(facts.model_dump_json()) == facts
+    with pytest.raises(ValidationError):
+        VerifiedMemberFacts(**facts.model_dump(), given_name="Sample")
+
+
+def test_FR_003_19_snapshot_requires_as_of_date() -> None:
+    data = _snapshot().model_dump()
+    del data["as_of_date"]
+
+    with pytest.raises(ValidationError):
+        HouseholdSnapshot(**data)

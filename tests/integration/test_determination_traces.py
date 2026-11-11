@@ -33,8 +33,7 @@ async def test_FR_003_05_every_seeded_history_and_test_set_determination_has_six
 
     async with open_client(owner_url) as client:
         records = [
-            doc
-            async for doc in client[integration_settings.MONGO_DB]["determinations"].find({})
+            doc async for doc in client[integration_settings.MONGO_DB]["determinations"].find({})
         ]
     assert records, "the seeded history holds no determinations (FR-003-22)"
     for record in records:

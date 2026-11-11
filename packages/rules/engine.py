@@ -14,9 +14,9 @@ from __future__ import annotations
 
 from datetime import date
 
+from packages.domain.case import DeterminationOutcome
 from packages.domain.eligibility import (
     Determination,
-    EligibilityResult,
     MissingItem,
     RuleOutcome,
     RuleResult,
@@ -52,15 +52,15 @@ def _merge_missing(results: list[RuleResult]) -> list[MissingItem]:
     return merged
 
 
-def _result(results: list[RuleResult], has_rule_set: bool) -> EligibilityResult:
+def _result(results: list[RuleResult], has_rule_set: bool) -> DeterminationOutcome:
     outcomes = {r.outcome for r in results}
     if not has_rule_set:
-        return EligibilityResult.cannot_determine
+        return DeterminationOutcome.cannot_determine
     if RuleOutcome.fail in outcomes:
-        return EligibilityResult.ineligible
+        return DeterminationOutcome.ineligible
     if RuleOutcome.missing in outcomes:
-        return EligibilityResult.cannot_determine
-    return EligibilityResult.eligible
+        return DeterminationOutcome.cannot_determine
+    return DeterminationOutcome.eligible
 
 
 def evaluate(household: HouseholdSnapshot, as_of_date: date) -> Determination:

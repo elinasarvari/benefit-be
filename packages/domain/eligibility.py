@@ -3,10 +3,12 @@ from __future__ import annotations
 from datetime import date, datetime
 from decimal import Decimal
 from enum import StrEnum
-from typing import Literal
+from typing import Annotated, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, WithJsonSchema
+
+from packages.domain.case import DenialReason, DeterminationOutcome
 
 
 class RuleId(StrEnum):
@@ -22,12 +24,6 @@ class RuleOutcome(StrEnum):
     passed = "pass"
     fail = "fail"
     missing = "missing"
-
-
-class EligibilityResult(StrEnum):
-    eligible = "eligible"
-    ineligible = "ineligible"
-    cannot_determine = "cannot_determine"
 
 
 class PovertyGuideline(BaseModel):
@@ -54,7 +50,10 @@ class RuleSet(BaseModel):
 
 
 class MissingItem(BaseModel):
-    model_config = ConfigDict(extra="forbid", frozen=True)
+    # Responses always carry both IDs (null when the item is not about one member or job).
+    model_config = ConfigDict(
+        extra="forbid", frozen=True, json_schema_serialization_defaults_required=True
+    )
 
     item: str
     member_id: UUID | None = None
@@ -70,7 +69,7 @@ class RuleResult(BaseModel):
     inputs: dict[str, str]
     threshold: str | None
     policy_ref: str
-    missing: list[MissingItem] = []
+    missing: list[MissingItem]
 
 
 class Determination(BaseModel):
@@ -78,7 +77,7 @@ class Determination(BaseModel):
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
-    result: EligibilityResult
+    result: DeterminationOutcome
     as_of_date: date
     rule_set_id: str | None
     rule_set_version: int | None
@@ -99,3 +98,38 @@ class DeterminationRecord(BaseModel):
     snapshot_id: UUID
     recorded_at: datetime
     determination: Determination
+
+
+# The contract lists two reasons inline; a determination never gives the third `DenialReason`.
+ReasonCode = Annotated[
+    Literal[DenialReason.income_over_limit, DenialReason.other_rule_not_met] | None,
+    WithJsonSchema(
+        {
+            "type": ["string", "null"],
+            "enum": [
+                DenialReason.income_over_limit.value,
+                DenialReason.other_rule_not_met.value,
+                None,
+            ],
+        }
+    ),
+]
+
+
+class DeterminationView(BaseModel):
+    """Read model of a stored determination for the case page (FR-003-23, ADR-003-05)."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    determination_id: UUID
+    result: DeterminationOutcome
+    reason_code: ReasonCode
+    as_of_date: date
+    rule_set_id: str | None
+    rule_set_version: int | None
+    household_size: int = Field(ge=0)
+    household_monthly_income: Decimal | None
+    monthly_income_limit: Decimal | None
+    rules: list[RuleResult] = Field(min_length=6, max_length=6)
+    missing_items: list[MissingItem]
+    recorded_at: datetime

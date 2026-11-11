@@ -10,8 +10,8 @@ import json
 from pathlib import Path
 from typing import Any
 
-from packages.domain.eligibility import Determination, DeterminationRecord
-from packages.domain.household import HouseholdSnapshot
+from packages.domain.eligibility import Determination, DeterminationRecord, DeterminationView
+from packages.domain.household import HouseholdSnapshot, VerifiedMemberFacts
 
 SNAPSHOT = Path(__file__).parent / "snapshots" / "eligibility_models.json"
 
@@ -19,7 +19,13 @@ SNAPSHOT = Path(__file__).parent / "snapshots" / "eligibility_models.json"
 def live_schemas() -> dict[str, Any]:
     return {
         model.__name__: model.model_json_schema()
-        for model in (HouseholdSnapshot, Determination, DeterminationRecord)
+        for model in (
+            HouseholdSnapshot,
+            VerifiedMemberFacts,
+            Determination,
+            DeterminationRecord,
+            DeterminationView,
+        )
     }
 
 

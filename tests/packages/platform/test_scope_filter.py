@@ -84,7 +84,8 @@ def test_FR_000_19_registry_covers_every_collection_the_migrations_create() -> N
         | set(baseline.SCOPED_HOUSEHOLD_ONLY)
         | set(case_lifecycle.CREATED_HOUSEHOLD_ONLY)
         | {case_screens.APPLICATIONS}
-    )
+        | {"seeded_verifications"}  # created by 0005 (ADR-003-03)
+    ) - {"household_stub_results"}  # dropped by 0005
 
     assert created == set(HOUSEHOLD_SCOPED)
     assert set(baseline.UNSCOPED) <= set(UNSCOPED)
@@ -102,7 +103,8 @@ def test_FR_001_23_worker_scope_filters_coverage_by_household_and_refuses_househ
     assert scoped_filter(worker, "coverage_periods", {"end_date": {"$gte": "2026-03-17"}}) == {
         "$and": [{"end_date": {"$gte": "2026-03-17"}}, {"household_id": H1}]
     }
-    assert scoped_filter(worker, "household_stub_results") == {"household_id": H1}
+    assert scoped_filter(worker, "seeded_verifications") == {"household_id": H1}
+    assert "household_stub_results" not in HOUSEHOLD_SCOPED  # dropped by 0005 (ADR-003-03)
     for forbidden in ("households", "users"):
         with pytest.raises(Forbidden):
             scoped_filter(worker, forbidden)

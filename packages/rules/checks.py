@@ -100,6 +100,7 @@ def check_residency(applicant: MemberFacts | None, rule_set: RuleSet | None) -> 
         inputs=inputs,
         threshold=rule_set.state,
         policy_ref=_ref(rule, rule_set),
+        missing=[],
     )
 
 
@@ -120,6 +121,7 @@ def check_age(
         inputs=inputs,
         threshold=f"{rule_set.age_min}-{rule_set.age_max}",
         policy_ref=_ref(rule, rule_set),
+        missing=[],
     )
 
 

@@ -58,7 +58,7 @@ def test_FR_003_06_seeded_rule_set_documents_equal_RULE_SETS() -> None:
 def test_FR_003_07_same_household_as_of_2025_and_2026_uses_each_years_limit() -> None:
     from decimal import Decimal
 
-    from packages.domain.eligibility import EligibilityResult
+    from packages.domain.case import DeterminationOutcome
     from packages.rules.engine import evaluate
     from tests.packages.rules.conftest import job, member, snapshot, stub
 
@@ -72,9 +72,9 @@ def test_FR_003_07_same_household_as_of_2025_and_2026_uses_each_years_limit() ->
     in_2025 = evaluate(household, date(2025, 7, 1))
     in_2026 = evaluate(household, date(2026, 7, 1))
 
-    assert in_2025.result is EligibilityResult.ineligible
+    assert in_2025.result is DeterminationOutcome.ineligible
     assert in_2025.monthly_income_limit == Decimal("2300")
     assert in_2025.rule_set_id == "IL-ADULT-2025"
-    assert in_2026.result is EligibilityResult.eligible
+    assert in_2026.result is DeterminationOutcome.eligible
     assert in_2026.monthly_income_limit == Decimal("2380")
     assert in_2026.rule_set_id == "IL-ADULT-2026"

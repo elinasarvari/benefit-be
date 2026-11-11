@@ -2,21 +2,14 @@ from __future__ import annotations
 
 from datetime import date, datetime
 from decimal import Decimal
-from enum import StrEnum
-from typing import Annotated, Literal
+from typing import Annotated
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
-Relationship = Literal["self", "spouse", "child", "other"]
+from packages.domain.case import PayFrequency, Relationship
+
 StateCode = Annotated[str, StringConstraints(pattern=r"^[A-Z]{2}$")]
-
-
-class PayFrequency(StrEnum):
-    weekly = "weekly"
-    biweekly = "biweekly"
-    semimonthly = "semimonthly"
-    monthly = "monthly"
 
 
 class Job(BaseModel):
@@ -87,5 +80,17 @@ class HouseholdSnapshot(BaseModel):
     snapshot_id: UUID
     household_id: UUID
     case_id: UUID
+    as_of_date: date
     captured_at: datetime
     members: list[MemberFacts]
+
+
+class VerifiedMemberFacts(BaseModel):
+    """Verified identity and pay stub facts for one member (interim source, ADR-003-03)."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    household_id: UUID
+    member_id: UUID
+    identity_verified: bool | None
+    jobs: list[JobIncome]

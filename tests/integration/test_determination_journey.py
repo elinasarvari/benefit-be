@@ -90,7 +90,7 @@ async def _submit_and_settle(
     return case_id, response, listed
 
 
-async def test_FR_003_14_seeded_households_a_b_c_submit_form_and_end_eligible_ineligible_cannot_determine(
+async def test_FR_003_14_seeded_households_a_b_c_submit_form_and_end_eligible_ineligible_cannot_determine(  # noqa: E501 - the name starts with the FR ID and the TC's scenario
     integration_settings: Settings,
 ) -> None:
     await rebuild(integration_settings)

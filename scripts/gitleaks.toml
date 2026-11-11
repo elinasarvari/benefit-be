@@ -1,0 +1,19 @@
+# The secrets-scan config that `make check`, `make verify` and CI pass with --config.
+# Same as the root .gitleaks.toml (gitleaks' default rules, .env.example allowed), plus one narrow exception:
+# the synthetic known-answer dataset's `case_key` labels ("KA-02-elig01-out-of-state") look like API keys to
+# the generic-api-key rule. Only that rule, only that field, only in that file: a real secret anywhere,
+# including elsewhere in known_answers.json, is still reported.
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Synthetic placeholders only; .env is git-ignored and never scanned for commit."
+paths = ['''\.env\.example$''']
+
+[[allowlists]]
+description = "Synthetic known-answer case labels (FR-003-10..13), not credentials."
+targetRules = ["generic-api-key"]
+condition = "AND"
+paths = ['''(^|/)db/seeds/data/known_answers\.json$''']
+regexTarget = "match"
+regexes = ['''case_key["']?\s*:\s*["']KA-\d{2}-[a-z0-9-]+''']

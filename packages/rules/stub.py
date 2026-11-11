@@ -3,9 +3,9 @@ from __future__ import annotations
 from datetime import date
 from decimal import Decimal
 
+from packages.domain.case import DeterminationOutcome
 from packages.domain.eligibility import (
     Determination,
-    EligibilityResult,
     RuleOutcome,
     RuleResult,
 )
@@ -18,7 +18,7 @@ class StubRulesEngine:
 
     def evaluate(self, household: HouseholdSnapshot, as_of_date: date) -> Determination:
         return Determination(
-            result=EligibilityResult.eligible,
+            result=DeterminationOutcome.eligible,
             as_of_date=as_of_date,
             rule_set_id="IL-ADULT-STUB",
             rule_set_version=1,
@@ -33,6 +33,7 @@ class StubRulesEngine:
                     inputs={},
                     threshold=None,
                     policy_ref=ref,
+                    missing=[],
                 )
                 for rule, ref in POLICY_REFS.items()
             ],

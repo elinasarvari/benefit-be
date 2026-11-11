@@ -4,11 +4,14 @@ TEMPORAL_CLI_VERSION := 1.8.2
 MONGO_VERSION := 8.0.38
 BENEFIT_FE_DIR ?= ../benefit-fe
 MONGO_DIR ?= $(abspath .data/mongo)
+# Ports default to the usual ones; `make verify` sets them to free ports for its own isolated stack.
+MONGO_PORT ?= 27017
+TEMPORAL_ADDRESS ?= localhost:7233
 PYTEST_ARGS ?=
 export BENEFIT_FE_DIR
 
 .PHONY: doctor setup mongo-up mongo-down dev prod seed reset health e2e lint typecheck test test-unit test-workflow test-contract \
-	test-integration test-api test-stack smoke-ai openapi openapi-check check verify mutation-audit
+	test-integration test-api test-stack smoke-ai openapi openapi-check check verify verify-stack mutation-audit
 
 doctor:
 	@python3 scripts/doctor.py
@@ -27,7 +30,7 @@ mongo-up:
 	@if [ -f $(MONGO_DIR)/mongod.pid ] && kill -0 "$$(cat $(MONGO_DIR)/mongod.pid)" 2>/dev/null; then \
 		echo "mongod already running"; \
 	else \
-		mongod --replSet rs0 --keyFile $(MONGO_DIR)/keyfile --bind_ip 127.0.0.1 --port 27017 \
+		mongod --replSet rs0 --keyFile $(MONGO_DIR)/keyfile --bind_ip 127.0.0.1 --port $(MONGO_PORT) \
 			--dbpath $(MONGO_DIR)/db --logpath $(MONGO_DIR)/mongod.log \
 			--pidfilepath $(MONGO_DIR)/mongod.pid --fork > /dev/null; \
 	fi
@@ -49,7 +52,7 @@ seed:
 # Safe to run while `make dev` is running: it rebuilds the data and stops in-flight workflows.
 reset: mongo-up
 	uv run python -m db.seeds.reset
-	@temporal workflow terminate --query 'ExecutionStatus="Running"' --yes > /dev/null 2>&1 \
+	@temporal workflow terminate --address $(TEMPORAL_ADDRESS) --query 'ExecutionStatus="Running"' --yes > /dev/null 2>&1 \
 		|| echo "note: no Temporal server to clear (it is not running)"
 	@uv run python -m scripts.clear_traces
 
@@ -102,9 +105,15 @@ check: lint typecheck test-unit test-workflow test-contract openapi-check
 	gitleaks detect --no-banner --config scripts/gitleaks.toml --log-opts=HEAD  # this branch's history only, not every fetched ref
 	uv run pip-audit
 
-# Every CI job's checks in both repos, one table. Starts MongoDB, Temporal and the stack as needed.
+# Every CI job's checks in both repos, one table. Starts its own MongoDB, Temporal and stack on free
+# ports, so it runs beside `make dev`, and stops all of it at the end.
 verify:
 	uv run python -m scripts.verify
+
+# Only the stages that need the stack (client in sync, integration, stack and api tests, e2e), on the
+# same isolated stack: what the feature workflow's e2e job runs beside `make check`.
+verify-stack:
+	uv run python -m scripts.verify --stack-only
 
 # Plants known bugs one at a time and checks the tests fail for each. Slow: runs real tests.
 mutation-audit:

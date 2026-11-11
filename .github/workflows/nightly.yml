@@ -47,7 +47,13 @@ jobs:
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ hashFiles('benefit-fe/pnpm-lock.yaml') }}
-      - run: pnpm exec playwright install --with-deps
+      # Firefox and WebKit need system libraries the runner image lacks, so the nightly keeps --with-deps,
+      # with apt told to retry and time out instead of hanging on a slow Ubuntu mirror.
+      - name: Install Playwright browsers and their system libraries
+        run: |
+          printf 'Acquire::Retries "5";\nAcquire::http::Timeout "30";\nAcquire::https::Timeout "30";\n' \
+            | sudo tee /etc/apt/apt.conf.d/80-retries > /dev/null
+          timeout 600 pnpm exec playwright install --with-deps
         working-directory: benefit-fe
       - uses: ./benefit-be/.github/actions/setup-services
         with:

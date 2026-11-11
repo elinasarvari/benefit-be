@@ -1,5 +1,7 @@
 SHELL := /bin/bash
 TEMPORAL_CLI_VERSION := 1.8.2
+# The MongoDB CI downloads (fastdl.mongodb.org, cached; see .github/actions/setup-services). Locally, brew's.
+MONGO_VERSION := 8.0.38
 BENEFIT_FE_DIR ?= ../benefit-fe
 MONGO_DIR ?= $(abspath .data/mongo)
 PYTEST_ARGS ?=

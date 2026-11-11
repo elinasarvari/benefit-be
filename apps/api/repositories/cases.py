@@ -1,4 +1,5 @@
-"""Scoped reads of `cases`, `coverage_periods`, `review_tasks` and the guarded case insert.
+"""Scoped reads of `cases`, `case_events`, `coverage_periods`, `review_tasks`, the guarded case
+insert and the `applications` insert.
 
 Every read goes through `packages.platform.scope`, so an applicant only ever sees their own
 household (R16, PL-6). The insert relies on the indexes of migration 0002 (ADR-001-02):
@@ -9,20 +10,26 @@ from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
 from datetime import UTC, date, datetime, time
+from decimal import Decimal
 from enum import Enum
 from typing import Any, TypeVar
 from uuid import UUID
 
+from bson.decimal128 import Decimal128
 from pymongo.asynchronous.client_session import AsyncClientSession
 from pymongo.errors import DuplicateKeyError
 
 from packages.domain.audit import AuditLogEntry
 from packages.domain.case import (
     Case,
+    CaseEvent,
+    CaseState,
     CaseworkerAction,
     CaseworkerActionType,
+    CoveragePeriod,
     OpenReviewTask,
     ReviewTaskStatus,
+    StoredApplication,
 )
 from packages.platform.audit import AuditWriter
 from packages.platform.errors import Forbidden
@@ -35,8 +42,12 @@ CASES = "cases"
 COVERAGE_PERIODS = "coverage_periods"
 REVIEW_TASKS = "review_tasks"
 CASEWORKER_ACTIONS = "caseworker_actions"
+CASE_EVENTS = "case_events"
+APPLICATIONS = "applications"
 
 CASE_FIELDS = {name: 1 for name in Case.model_fields if name != "id"} | {"_id": 1}
+EVENT_FIELDS = {name: 1 for name in CaseEvent.model_fields if name != "id"} | {"_id": 1}
+COVERAGE_FIELDS = {name: 1 for name in CoveragePeriod.model_fields if name != "id"} | {"_id": 1}
 TASK_FIELDS = {"_id": 1, "reason": 1, "allowed_actions": 1}
 
 
@@ -63,6 +74,8 @@ def to_bson(value: Any) -> Any:
         return [to_bson(item) for item in value]
     if isinstance(value, Enum):
         return value.value
+    if isinstance(value, Decimal):
+        return Decimal128(value)  # money is never a float (database.md)
     if isinstance(value, date) and not isinstance(value, datetime):
         return bson_date(value)
     return value
@@ -73,6 +86,13 @@ def _case_from_bson(doc: dict[str, Any]) -> Case:
         if isinstance(doc.get(name), datetime):
             doc[name] = doc[name].astimezone(UTC).date()
     return Case.model_validate(doc)
+
+
+def _coverage_from_bson(doc: dict[str, Any]) -> CoveragePeriod:
+    for name in ("start_date", "end_date"):
+        if isinstance(doc.get(name), datetime):
+            doc[name] = doc[name].astimezone(UTC).date()
+    return CoveragePeriod.model_validate(doc)
 
 
 def _is_open_case_guard(error: DuplicateKeyError) -> bool:
@@ -91,12 +111,20 @@ class MongoCaseTransaction:
         )
         return _case_from_bson(doc) if doc else None
 
-    async def coverage_ends_on_or_after(self, scope: Scope, household_id: UUID, day: date) -> bool:
+    async def active_coverage(
+        self, scope: Scope, household_id: UUID, day: date
+    ) -> CoveragePeriod | None:
+        """The household's coverage period that has not ended on `day`, if any."""
         query = {"household_id": household_id, "end_date": {"$gte": bson_date(day)}}
         doc = await find_one(
-            self._db, COVERAGE_PERIODS, scope, query, projection={"_id": 1}, session=self._session
+            self._db,
+            COVERAGE_PERIODS,
+            scope,
+            query,
+            projection=COVERAGE_FIELDS,
+            session=self._session,
         )
-        return doc is not None
+        return _coverage_from_bson(doc) if doc else None
 
     async def insert_case(self, scope: Scope, case: Case) -> None:
         try:
@@ -111,6 +139,16 @@ class MongoCaseTransaction:
             if _is_open_case_guard(error):
                 raise HouseholdHasOpenCase() from error
             raise CaseAlreadyExists() from error
+
+    async def insert_application(self, scope: Scope, application: StoredApplication) -> None:
+        """Same session as `insert_case`: both commit or neither does (ADR-001-08)."""
+        await insert_one(
+            self._db,
+            APPLICATIONS,
+            scope,
+            to_bson(application.model_dump(by_alias=True)),
+            session=self._session,
+        )
 
 
 class MongoCaseRepository:
@@ -131,6 +169,68 @@ class MongoCaseRepository:
         db = self._client[self._db_name]
         doc = await find_one(db, CASES, scope, {"_id": case_id}, projection=CASE_FIELDS)
         return _case_from_bson(doc) if doc else None
+
+    async def find_open_case_id(self, scope: Scope, household_id: UUID) -> UUID | None:
+        """The household's open case, read after the partial index refused a second one."""
+        db = self._client[self._db_name]
+        query = {"household_id": household_id, "open": True}
+        doc = await find_one(db, CASES, scope, query, projection={"_id": 1})
+        return doc["_id"] if doc else None
+
+    async def coverage_for_case(self, scope: Scope, case_id: UUID) -> CoveragePeriod | None:
+        db = self._client[self._db_name]
+        doc = await find_one(
+            db, COVERAGE_PERIODS, scope, {"case_id": case_id}, projection=COVERAGE_FIELDS
+        )
+        return _coverage_from_bson(doc) if doc else None
+
+    async def list_cases(
+        self,
+        scope: Scope,
+        *,
+        state: CaseState | None,
+        after: tuple[date, UUID] | None,
+        limit: int,
+    ) -> list[Case]:
+        """One keyset page ordered by `(decision_deadline, _id)`; the caller asks for limit + 1.
+
+        No `state` = open cases (index `open_deadline`); a state = every case in it. The household
+        filter comes from the scope, so an applicant never sees another household (PL-6).
+        """
+        query: dict[str, Any] = {"open": True} if state is None else {"state": state.value}
+        if after is not None:
+            deadline, last_id = after
+            query = {
+                "$and": [
+                    query,
+                    {
+                        "$or": [
+                            {"decision_deadline": {"$gt": bson_date(deadline)}},
+                            {"decision_deadline": bson_date(deadline), "_id": {"$gt": last_id}},
+                        ]
+                    },
+                ]
+            }
+        cursor = (
+            self._client[self._db_name][CASES]
+            .find(scoped_filter(scope, CASES, query), CASE_FIELDS)
+            .sort([("decision_deadline", 1), ("_id", 1)])
+            .limit(limit)
+        )
+        return [_case_from_bson(doc) for doc in await cursor.to_list(length=limit)]
+
+    async def list_events(
+        self, scope: Scope, case_id: UUID, *, after_seq: int, limit: int
+    ) -> list[CaseEvent]:
+        """One page of the case's events by `seq`; the caller asks for limit + 1."""
+        query = {"case_id": case_id, "seq": {"$gt": after_seq}}
+        cursor = (
+            self._client[self._db_name][CASE_EVENTS]
+            .find(scoped_filter(scope, CASE_EVENTS, query), EVENT_FIELDS)
+            .sort("seq", 1)
+            .limit(limit)
+        )
+        return [CaseEvent.model_validate(doc) for doc in await cursor.to_list(length=limit)]
 
     async def open_review_task(self, scope: Scope, case_id: UUID) -> OpenReviewTask | None:
         query = {"case_id": case_id, "status": ReviewTaskStatus.open.value}

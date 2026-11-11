@@ -47,6 +47,7 @@ from packages.platform.clock import SystemClock
 from packages.platform.mongo import Client as MongoClient
 from packages.platform.mongo import make_client
 from packages.platform.settings import Settings
+from tests.apps.api.forms import body_dict
 
 API = "/api/v1"
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -173,7 +174,7 @@ async def api(settings: Settings) -> AsyncIterator[Api]:
 
 
 async def submit(client: httpx.AsyncClient, reference: uuid.UUID | None = None) -> httpx.Response:
-    body = {"submission_reference": str(reference or uuid.uuid4())}
+    body = body_dict(reference or uuid.uuid4())
     return await client.post(f"{API}/applications", json=body)
 
 

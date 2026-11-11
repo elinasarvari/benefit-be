@@ -7,6 +7,7 @@ agreement from every lane that uses it (BA-8).
 from __future__ import annotations
 
 from datetime import date, datetime
+from decimal import Decimal
 from enum import StrEnum
 from typing import Literal, Self
 from uuid import UUID, uuid5
@@ -389,7 +390,149 @@ class AllowedActions(_Model):
     actions: list[CaseworkerActionType] = Field(default_factory=list)
 
 
+# --- Application form (ADR-001-08, FR-001-24) --------------------------------------------------
+
+
+class Relationship(StrEnum):
+    self = "self"
+    spouse = "spouse"
+    partner = "partner"
+    child = "child"
+    parent = "parent"
+    sibling = "sibling"
+    other_relative = "other_relative"
+    other = "other"
+
+
+class CitizenshipStatus(StrEnum):
+    us_citizen = "us_citizen"
+    qualifying_immigrant = "qualifying_immigrant"
+    neither = "neither"
+
+
+class PayFrequency(StrEnum):
+    weekly = "weekly"
+    biweekly = "biweekly"
+    semimonthly = "semimonthly"
+    monthly = "monthly"
+
+
+class Job(_Model):
+    employer: str = Field(min_length=1, max_length=100)
+    pay_frequency: PayFrequency
+    declared_monthly_gross: Decimal = Field(ge=0, decimal_places=2)
+
+
+class ApplicantMember(_Model):
+    full_name: str = Field(min_length=1, max_length=100)
+    date_of_birth: date
+    relationship: Relationship
+    citizenship_status: CitizenshipStatus
+    medicare_entitled: bool
+    zero_income: bool
+    jobs: list[Job] = Field(default_factory=list, max_length=5)
+
+    @model_validator(mode="after")
+    def _valid(self) -> Self:
+        if self.date_of_birth >= date.today():
+            raise ValueError("date_of_birth must be in the past")
+        if self.zero_income == bool(self.jobs):
+            raise ValueError("exactly one of zero_income or jobs is required")
+        return self
+
+
+class IllinoisAddress(_Model):
+    line1: str = Field(min_length=1, max_length=100)
+    line2: str | None = Field(default=None, max_length=100)
+    city: str = Field(min_length=1, max_length=60)
+    state: Literal["IL"]
+    postal_code: str = Field(pattern=r"^\d{5}$")
+
+
+class ApplicationForm(_Model):
+    members: list[ApplicantMember] = Field(min_length=1, max_length=10)
+    address: IllinoisAddress
+
+    @model_validator(mode="after")
+    def _one_self(self) -> Self:
+        if sum(m.relationship is Relationship.self for m in self.members) != 1:
+            raise ValueError("exactly one member must have relationship self")
+        return self
+
+
 class ApplicationSubmission(_Model):
     """API body; the household comes from the session, never from the body."""
 
     submission_reference: UUID
+    form: ApplicationForm
+
+
+class StoredApplication(_Document):
+    id: UUID = Field(alias="_id")
+    case_id: UUID
+    household_id: UUID
+    submission_reference: str = Field(max_length=128)
+    form: ApplicationForm
+    submitted_at: datetime
+    synthetic: Literal[True]
+
+    @model_validator(mode="after")
+    def _id_is_case_id(self) -> Self:
+        if self.id != self.case_id:
+            raise ValueError("_id must equal case_id")
+        return self
+
+
+# --- Read models (ADR-001-07; API only, not stored) --------------------------------------------
+
+
+class CaseSummary(_Model):
+    case_id: UUID
+    case_type: CaseType
+    state: CaseState
+    received_on: date
+    decision_deadline: date
+    days_remaining: int | None = None
+    at_risk: bool = False
+    outcome: CaseOutcome | None = None
+
+
+class CasePage(_Model):
+    items: list[CaseSummary]
+    next_cursor: str | None
+
+
+class CoverageSummary(_Model):
+    start_date: date
+    end_date: date
+    status: CoverageStatus
+
+
+class OverrideSummary(_Model):
+    reviewer_name: str
+    reason: str | None = Field(default=None, description="null for applicants")
+    decided_on: date
+
+
+class CaseDetail(CaseStatus):
+    case_type: CaseType
+    coverage_period: CoverageSummary | None = None
+    override: OverrideSummary | None = None
+    demo_clock: bool = False
+
+
+class CaseHistoryEntry(_Model):
+    seq: int
+    kind: CaseEventKind
+    from_state: CaseState | None = None
+    to_state: CaseState | None = None
+    case_time: datetime
+    real_time: datetime
+    actor: str = Field(description="System or a display name")
+    actor_type: EventActorType
+    reason_code: str
+
+
+class CaseHistoryPage(_Model):
+    items: list[CaseHistoryEntry]
+    next_cursor: int | None

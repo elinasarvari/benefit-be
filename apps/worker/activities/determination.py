@@ -36,12 +36,12 @@ class StubResults(Protocol):
 
 
 class FixedStubResults:
-    """Stub results by household, with a default for any household not listed (tests)."""
+    """Stub results by household, failing closed to `cannot_determine` if not listed (R21)."""
 
     def __init__(
         self,
         by_household: Mapping[UUID, DeterminationOutcome] | None = None,
-        default: DeterminationOutcome = DeterminationOutcome.eligible,
+        default: DeterminationOutcome = DeterminationOutcome.cannot_determine,
     ) -> None:
         self._by_household = dict(by_household or {})
         self._default = default

@@ -19,6 +19,7 @@ from tests.apps.worker.workflows.case_harness import (
     environment,
     signal,
     start,
+    status_of,
     wait_for_state,
     worker,
 )
@@ -79,6 +80,49 @@ async def test_FR_001_03_restart_while_waiting_on_task_no_second_task() -> None:
         if c.case_update is not None and c.case_update.state is CaseState.under_review
     ]
     assert len(opened) == 1
+    assert final.outcome is CaseOutcome.denied
+    assert seqs(stubs) == [1, 2, 3, 4]
+
+
+async def test_FR_001_03_restart_while_review_write_in_flight_resumes_under_review() -> None:
+    """The under_review write has run but not reported when the workflow worker stops (TC-75).
+
+    A new worker must answer `status` at the step the case reached, with the same open task, not
+    one step behind the projection (ADR-001-01: MongoDB lags the workflow, never the reverse)."""
+    stubs = Stubs(result=INELIGIBLE)
+    review_written = asyncio.Event()
+    release_write = asyncio.Event()
+
+    async def hold_review_change(change: CaseChange) -> None:
+        if change.event.to_state is CaseState.under_review:
+            review_written.set()
+            await release_write.wait()
+
+    stubs.on_change = hold_review_change
+    async with environment() as env:
+        activity_worker = Worker(env.client, task_queue=TASK_QUEUE, activities=stubs.activities())
+
+        def workflow_worker() -> Worker:
+            return Worker(env.client, task_queue=TASK_QUEUE, workflows=[CaseWorkflow], **NO_CACHE)
+
+        async with activity_worker:
+            async with workflow_worker():
+                handle, _ = await start(env)
+                await asyncio.wait_for(review_written.wait(), timeout=30)
+
+            async with workflow_worker():
+                resumed = await asyncio.wait_for(status_of(handle), timeout=30)
+                assert resumed.state is CaseState.under_review
+                assert resumed.open_review_task is not None
+                release_write.set()
+                await signal(
+                    handle,
+                    action(resumed.open_review_task.task_id, CaseworkerActionType.approve_denial),
+                )
+                final = await asyncio.wait_for(handle.result(), timeout=30)
+
+    review = next(c.review_task for c in stubs.changes if c.review_task is not None)
+    assert resumed.open_review_task.task_id == review.id
     assert final.outcome is CaseOutcome.denied
     assert seqs(stubs) == [1, 2, 3, 4]
 

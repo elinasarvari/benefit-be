@@ -23,7 +23,7 @@ class MongoStubResults:
         self,
         client: Client,
         db_name: str,
-        default: DeterminationOutcome = DeterminationOutcome.eligible,
+        default: DeterminationOutcome = DeterminationOutcome.cannot_determine,
     ) -> None:
         self._db = client[db_name]
         self._default = default

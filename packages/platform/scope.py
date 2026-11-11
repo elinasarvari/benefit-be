@@ -22,6 +22,7 @@ SCOPED_WITH_CASE = (
     "case_events",
     "review_tasks",
     "caseworker_actions",
+    "applications",
     "determinations",
     "household_snapshots",
     "outbox",

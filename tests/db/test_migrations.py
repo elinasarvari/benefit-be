@@ -58,7 +58,7 @@ async def test_migration_runner_records_and_skips_applied_versions(
         recorded = [doc["_id"] async for doc in ctx.db[MIGRATIONS_COLLECTION].find()]
 
     assert again == []
-    assert recorded == ["0001_baseline", "0002_case_lifecycle"]
+    assert recorded == ["0001_baseline", "0002_case_lifecycle", "0003_case_screens"]
 
 
 # --- 0002_case_lifecycle (001, KD-11) -------------------------------------------------------
@@ -219,8 +219,8 @@ async def test_FR_001_01_migration_0002_downgrade_restores_baseline_validators(
         again = await _validators(ctx.db)
         indexes = await ctx.db["cases"].index_information()
 
-    assert downgraded == ["0002_case_lifecycle"]
-    assert upgraded == ["0002_case_lifecycle"]
+    assert downgraded == ["0003_case_screens", "0002_case_lifecycle"]
+    assert upgraded == ["0002_case_lifecycle", "0003_case_screens"]
     for name in CASE_COLLECTIONS:
         assert baseline[name] != tightened[name]
         assert again[name] == tightened[name]
@@ -230,3 +230,96 @@ async def test_FR_001_01_migration_0002_downgrade_restores_baseline_validators(
     assert {"submission_reference_unique", "household_open_unique", "state_deadline"} <= set(
         indexes
     )
+
+
+# --- 0003_case_screens (001, KD-11, ADR-001-08) ----------------------------------------------
+
+
+def _application(case_id: uuid.UUID | None = None) -> dict[str, Any]:
+    case_id = case_id or uuid.uuid4()
+    now = datetime(2026, 3, 17, 15, tzinfo=UTC)
+    return {
+        "_id": case_id,
+        "case_id": case_id,
+        "household_id": uuid.uuid4(),
+        "submission_reference": f"sub-{uuid.uuid4()}",
+        "form": {
+            "members": [
+                {
+                    "full_name": "SYNTH-NAME",
+                    "date_of_birth": datetime(1990, 1, 1, tzinfo=UTC),
+                    "relationship": "self",
+                    "citizenship_status": "us_citizen",
+                    "medicare_entitled": False,
+                    "zero_income": True,
+                    "jobs": [],
+                }
+            ],
+            "address": {
+                "line1": "1 Synthetic Way",
+                "city": "Springfield",
+                "state": "IL",
+                "postal_code": "62701",
+            },
+        },
+        "submitted_at": now,
+        "synthetic": True,
+        "created_at": now,
+        "updated_at": now,
+    }
+
+
+def _with_member_field(doc: dict[str, Any]) -> dict[str, Any]:
+    doc["form"]["members"][0]["unexpected"] = "x"
+    return doc
+
+
+@pytest.mark.parametrize(
+    "mutate",
+    [
+        lambda d: {**d, "unexpected_field": "x"},
+        _with_member_field,
+        lambda d: {**d, "synthetic": False},
+        lambda d: {k: v for k, v in d.items() if k != "synthetic"},
+    ],
+    ids=["top-level-extra", "nested-member-extra", "synthetic-false", "synthetic-missing"],
+)
+async def test_FR_001_24_migration_0003_applications_validator_is_strict(
+    integration_settings: Settings, owner_url: str, mutate: Any
+) -> None:
+    async with open_client(owner_url) as client:
+        applications = client[integration_settings.MONGO_DB]["applications"]
+
+        accepted = await applications.insert_one(_application())
+        with pytest.raises(WriteError):
+            await applications.insert_one(mutate(_application()))
+
+    assert accepted.acknowledged
+
+
+async def test_FR_001_27_migration_0003_adds_open_deadline_index_and_downgrade_drops_both(
+    integration_settings: Settings, owner_url: str
+) -> None:
+    async with open_client(owner_url) as client:
+        ctx = _ctx(client, integration_settings)
+        indexes = await ctx.db["cases"].index_information()
+        collections = set(await ctx.db.list_collection_names())
+
+        downgraded = await down(ctx, "0002_case_lifecycle")
+        down_indexes = await ctx.db["cases"].index_information()
+        down_collections = set(await ctx.db.list_collection_names())
+
+        upgraded = await up(ctx)
+        again_indexes = await ctx.db["cases"].index_information()
+        again_collections = set(await ctx.db.list_collection_names())
+
+    key = [("open", 1), ("decision_deadline", 1), ("_id", 1)]
+    assert indexes["open_deadline"]["key"] == key
+    assert "applications" in collections
+    assert downgraded == ["0003_case_screens"]
+    assert "open_deadline" not in down_indexes
+    assert "applications" not in down_collections
+    assert "submission_reference_unique" in down_indexes  # 0002 is untouched
+    assert upgraded == ["0003_case_screens"]
+    assert again_indexes["open_deadline"]["key"] == key
+    assert "applications" in again_collections

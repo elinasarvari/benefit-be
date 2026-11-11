@@ -226,7 +226,9 @@ async def test_FR_001_11_api_status_matches_workflow_status_query(
         finally:
             await j.stop(case_id)
 
-    assert from_api == CaseStatus.model_validate(from_workflow).model_dump(mode="json")
+    # The API returns `CaseDetail` (CaseStatus plus case_type, coverage, override, demo_clock).
+    expected = CaseStatus.model_validate(from_workflow).model_dump(mode="json")
+    assert {k: from_api[k] for k in expected} == expected
     assert from_api["days_remaining"] == 45
     assert from_api["at_risk"] is False
 

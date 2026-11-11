@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import uuid
+from uuid import UUID
 
 import structlog
 from fastapi import FastAPI, Request
@@ -19,6 +20,7 @@ def error_response(
     *,
     message: str | None = None,
     fields: list[FieldError] | None = None,
+    related_case_id: UUID | None = None,
 ) -> JSONResponse:
     envelope = ErrorEnvelope(
         error=ErrorBody(
@@ -26,6 +28,7 @@ def error_response(
             message=message or DEFAULT_MESSAGE[code],
             fields=fields or [],
             reference_id=reference_id,
+            related_case_id=related_case_id,
         )
     )
     return JSONResponse(
@@ -59,7 +62,11 @@ def register_error_handlers(app: FastAPI) -> None:
     @app.exception_handler(AppError)
     async def handle_app_error(request: Request, exc: AppError) -> JSONResponse:
         return error_response(
-            exc.code, _reference_id(request), message=exc.message, fields=exc.fields
+            exc.code,
+            _reference_id(request),
+            message=exc.message,
+            fields=exc.fields,
+            related_case_id=exc.related_case_id,
         )
 
     @app.exception_handler(RequestValidationError)

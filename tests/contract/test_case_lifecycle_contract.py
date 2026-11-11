@@ -32,6 +32,16 @@ METHODS = ("get", "post", "put", "patch", "delete")
 
 
 def _resolve(document: dict[str, Any], schema: dict[str, Any]) -> dict[str, Any]:
+    if "allOf" in schema:  # merge the parts: properties and required fields add up
+        merged: dict[str, Any] = {k: v for k, v in schema.items() if k != "allOf"}
+        for part in schema["allOf"]:
+            resolved = _resolve(document, part)
+            merged["properties"] = {
+                **merged.get("properties", {}),
+                **resolved.get("properties", {}),
+            }
+            merged["required"] = [*merged.get("required", []), *resolved.get("required", [])]
+        return merged
     ref = schema.get("$ref")
     if ref is None:
         return schema
@@ -229,3 +239,32 @@ def test_FR_001_07_registered_workflow_names_match_contract(settings: Settings) 
     assert signals == contract["signals"]
     assert queries == contract["queries"]
     assert contract["activities"] <= registered_activity_names(settings)
+
+
+# --- Case read routes need a session and a role (TC-114) ----------------------------------------
+
+
+def test_FR_001_27_case_read_routes_require_session_and_roles(settings: Settings) -> None:
+    from fastapi.testclient import TestClient
+
+    from apps.api.main import create_app
+
+    app = create_app(settings)
+    expected = {
+        ("GET", "/api/v1/cases"),
+        ("GET", "/api/v1/cases/{case_id}"),
+        ("GET", "/api/v1/cases/{case_id}/history"),
+    }
+    registered = {
+        (method.upper(), path)
+        for path, operations in app.openapi()["paths"].items()
+        for method in operations
+    }
+    assert expected <= registered
+
+    client = TestClient(app)
+    case_id = "00000000-0000-4000-8000-000000000001"
+    for method, path in sorted(expected):
+        response = client.request(method, path.replace("{case_id}", case_id))
+        assert response.status_code == 401, f"{method} {path} answered {response.status_code}"
+        assert response.json()["error"]["code"] == "auth.required", f"{method} {path}"

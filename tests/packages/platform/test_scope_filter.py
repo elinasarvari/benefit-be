@@ -78,10 +78,12 @@ def test_FR_000_19_system_scope_is_limited_to_its_case_and_to_case_collections()
 def test_FR_000_19_registry_covers_every_collection_the_migrations_create() -> None:
     baseline = importlib.import_module("db.migrations.versions.0001_baseline")
     case_lifecycle = importlib.import_module("db.migrations.versions.0002_case_lifecycle")
+    case_screens = importlib.import_module("db.migrations.versions.0003_case_screens")
     created = (
         set(baseline.SCOPED_WITH_CASE)
         | set(baseline.SCOPED_HOUSEHOLD_ONLY)
         | set(case_lifecycle.CREATED_HOUSEHOLD_ONLY)
+        | {case_screens.APPLICATIONS}
     )
 
     assert created == set(HOUSEHOLD_SCOPED)
@@ -155,3 +157,27 @@ async def test_FR_000_19_insert_refuses_a_document_outside_the_scope() -> None:
         await insert_one(db, "cases", None, own)  # type: ignore[arg-type]
 
     assert db["cases"].inserted == [own]
+
+
+# --- Applications (001, ADR-001-08) ------------------------------------------------------------
+
+H2 = uuid.uuid4()
+
+
+async def test_FR_001_24_applicant_scope_cannot_read_other_household_application() -> None:
+    from packages.platform.scope import SCOPED_WITH_CASE
+
+    assert "applications" in SCOPED_WITH_CASE
+    other = scope_for(Role.applicant, H2)
+    own = {"_id": CASE, "case_id": CASE, "household_id": HOUSEHOLD}
+    db = _FakeDb()
+
+    assert scoped_filter(other, "applications", {"_id": CASE}) == {
+        "$and": [{"_id": CASE}, {"household_id": H2}]
+    }
+    assert scoped_filter(scope_for(Role.caseworker, None), "applications") == {}
+    assert scoped_filter(Scope.for_worker(CASE, HOUSEHOLD), "applications") == {"case_id": CASE}
+    with pytest.raises(Forbidden):  # H1's application written under H2's scope
+        await insert_one(db, "applications", other, own)  # type: ignore[arg-type]
+    await insert_one(db, "applications", scope_for(Role.applicant), own)  # type: ignore[arg-type]
+    assert db["applications"].inserted == [own]

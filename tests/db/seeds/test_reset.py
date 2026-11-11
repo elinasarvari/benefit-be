@@ -5,12 +5,13 @@ from datetime import UTC, datetime
 
 import pytest
 
-from db.seeds.generate import household_documents, stub_result_documents
+from db.seeds.generate import application_documents, household_documents, stub_result_documents
 from db.seeds.ids import HOUSEHOLD_A, HOUSEHOLD_B, HOUSEHOLD_C, seeded_id
 from db.seeds.reset import ResetRefused, guard, reset
 from db.seeds.users import DEMO_ACCOUNTS
 from packages.domain.case import DeterminationOutcome
 from packages.platform.settings import Settings
+from tests.apps.worker.case_factories import case_document
 from tests.integration.fixtures import open_client, rebuild
 
 
@@ -71,3 +72,59 @@ async def test_FR_000_02_reset_refuses_unmarked_non_empty_database(
             await guard(integration_settings)
     finally:
         await rebuild(integration_settings)
+
+
+async def test_FR_001_24_every_seeded_case_has_a_synthetic_application(
+    integration_settings: Settings, owner_url: str
+) -> None:
+    async with open_client(owner_url) as client:
+        db = client[integration_settings.MONGO_DB]
+        await rebuild(integration_settings)
+        case_ids = {doc["_id"] async for doc in db["cases"].find({}, {"_id": 1})}
+        applications = [doc async for doc in db["applications"].find()]
+
+    assert {doc["_id"] for doc in applications} == case_ids
+    assert all(doc["case_id"] == doc["_id"] and doc["synthetic"] is True for doc in applications)
+
+
+async def test_FR_001_24_seed_gives_an_existing_case_a_synthetic_application(
+    integration_settings: Settings, owner_url: str
+) -> None:
+    """TC-87 with a case present, so the check above cannot pass with zero rows."""
+    from db.seeds.generate import seed
+
+    case_id = uuid.uuid4()
+    async with open_client(owner_url) as client:
+        db = client[integration_settings.MONGO_DB]
+        await rebuild(integration_settings)
+        for name in ("households", "household_stub_results", "users", "applications"):
+            await db[name].delete_many({})
+        await db["cases"].insert_one(case_document(case_id, HOUSEHOLD_A))
+        await seed(integration_settings)
+        applications = [doc async for doc in db["applications"].find()]
+        await rebuild(integration_settings)
+
+    assert [doc["_id"] for doc in applications] == [case_id]
+    assert applications[0]["synthetic"] is True
+
+
+def test_FR_001_24_application_documents_match_cases_with_synthetic_names() -> None:
+    case_id = uuid.uuid4()
+    case_start = datetime(2026, 3, 17, 15, tzinfo=UTC)
+    case = {
+        "_id": case_id,
+        "case_id": case_id,
+        "household_id": HOUSEHOLD_A,
+        "submission_reference": "sub-seed-1",
+        "clock": {"case_start": case_start},
+    }
+
+    [doc] = application_documents([case])
+
+    assert doc["_id"] == case_id == doc["case_id"]
+    assert doc["household_id"] == HOUSEHOLD_A
+    assert doc["submission_reference"] == "sub-seed-1"
+    assert doc["synthetic"] is True
+    assert doc["submitted_at"] == case_start
+    assert all(m["full_name"].startswith("SYNTH-") for m in doc["form"]["members"])
+    assert application_documents([]) == []

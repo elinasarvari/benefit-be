@@ -243,6 +243,12 @@ class CaseWorkflow:
         )
 
     async def _record(self, event: CaseEvent, **parts: Any) -> None:
+        """Apply the change to the workflow's own state, then write the projection.
+
+        The workflow is the authority and MongoDB lags it by one activity (ADR-001-01), so the
+        state moves when the change is decided, not when the write reports back. Otherwise a
+        worker killed after the write commits but before it reports would resume one step behind
+        the projection (FR-001-03, TC-75). The commands are unchanged, so replay is too."""
         change = CaseChange(
             case_id=self._start.case_id,
             household_id=self._start.household_id,
@@ -250,9 +256,9 @@ class CaseWorkflow:
             event=event,
             **parts,
         )
-        await workflow.execute_activity("record_case_change", change, **UNTIL_DONE)
         if event.to_state is not None:
             self._state = event.to_state
+        await workflow.execute_activity("record_case_change", change, **UNTIL_DONE)
 
     async def _move(self, to_state: CaseState, reason_code: str) -> None:
         if not can_transition(self._state, to_state):
@@ -290,10 +296,10 @@ class CaseWorkflow:
             opened_case_time=event.case_time,
             opened_real_time=event.real_time,
         )
+        self._task = task
         await self._record(
             event, case_update=CaseUpdate(state=CaseState.under_review), review_task=task
         )
-        self._task = task
 
     def _rejection(self, request: CaseworkerActionRequest, problem: str | None) -> str | None:
         task = self._open_task()
@@ -386,6 +392,9 @@ class CaseWorkflow:
             )
             parts["review_task"] = self._resolved_task(request, event.case_time)
             parts["action"] = self._action_record(request, event, ActionOutcome.applied)
+        self._outcome = CaseOutcome.approved
+        if "review_task" in parts:
+            self._task = parts["review_task"]
         await self._record(
             event,
             case_update=CaseUpdate(
@@ -406,9 +415,6 @@ class CaseWorkflow:
             notice=self._notice(NoticeType.approval, event.case_time),
             **parts,
         )
-        self._outcome = CaseOutcome.approved
-        if "review_task" in parts:
-            self._task = parts["review_task"]
 
     async def _decide_denied(self, request: CaseworkerActionRequest) -> None:
         task = self._required_task()
@@ -421,6 +427,9 @@ class CaseWorkflow:
             review_task_id=task.id,
         )
         resolved = self._resolved_task(request, event.case_time)
+        self._outcome = CaseOutcome.denied
+        self._denial_reason = denial_reason
+        self._task = resolved
         await self._record(
             event,
             case_update=CaseUpdate(
@@ -434,6 +443,3 @@ class CaseWorkflow:
             action=self._action_record(request, event, ActionOutcome.applied),
             notice=self._notice(NoticeType.denial, event.case_time),
         )
-        self._outcome = CaseOutcome.denied
-        self._denial_reason = denial_reason
-        self._task = resolved

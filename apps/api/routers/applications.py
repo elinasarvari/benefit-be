@@ -24,9 +24,13 @@ SUBMIT_RESPONSES: dict[int | str, dict[str, Any]] = {
     409: {
         "model": ErrorEnvelope,
         "description": "Refused: error.code=conflict, reason in error.fields[0].type "
-        "(household_has_open_case | household_has_coverage | submission_reference_in_use)",
+        "(household_has_open_case | household_has_coverage | submission_reference_in_use); "
+        "error.related_case_id set for the first two",
     },
-    422: {"model": ErrorEnvelope, "description": "validation_failed"},
+    422: {
+        "model": ErrorEnvelope,
+        "description": "validation_failed; error.fields[].field is the dotted form path",
+    },
     503: {"model": ErrorEnvelope, "description": "Temporal unavailable; retry the same submission"},
 }
 

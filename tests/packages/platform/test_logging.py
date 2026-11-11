@@ -82,6 +82,25 @@ def test_FR_000_11_personal_data_masked(stream: io.StringIO, key: str) -> None:
     assert record["status"] == 200
 
 
+FORM_KEYS = [
+    "employer", "relationship", "members", "form", "jobs", "line1", "line2", "postal_code",
+    "citizenship_status", "declared_monthly_gross",
+]  # fmt: skip
+
+
+@pytest.mark.parametrize("key", FORM_KEYS)
+def test_FR_001_24_submit_log_line_has_no_form_fields(stream: io.StringIO, key: str) -> None:
+    structlog.get_logger().info(
+        "case.submitted", **{key: PLANTED, "nested": {key: [PLANTED]}, "created": True}
+    )
+
+    record = lines(stream)[0]
+    assert PLANTED not in stream.getvalue()
+    assert record[key] == "***"
+    assert record["nested"] == {key: "***"}
+    assert record["created"] is True
+
+
 @pytest.mark.parametrize(
     "value", ["123-45-6789", "123456789", f"bearer {JWT_LIKE}", "failed for ssn 123-45-6789 in x"]
 )

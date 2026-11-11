@@ -63,6 +63,26 @@ async def test_FR_001_16_stub_determination_follows_household_stub_field(
     assert again == first  # pure and idempotent (TW-11)
 
 
+async def test_FR_001_16_unseeded_household_is_cannot_determine() -> None:
+    """R21: a household with no stub result fails closed to review; seeded H1 keeps `eligible`."""
+    activities = DeterminationActivities(SEEDED)
+    env = ActivityEnvironment()
+    unseeded = uuid.UUID("00000000-0000-4000-8000-0000000000d4")
+
+    result = await env.run(
+        activities.determine_eligibility,
+        DeterminationRequest(case_id=CASE_ID, household_id=unseeded, as_of_date=AS_OF),
+    )
+    seeded = await env.run(
+        activities.determine_eligibility,
+        DeterminationRequest(case_id=CASE_ID, household_id=H_ELIGIBLE, as_of_date=AS_OF),
+    )
+
+    assert result.outcome is DeterminationOutcome.cannot_determine
+    assert result.missing_items == ["pay_stub"]
+    assert seeded.outcome is DeterminationOutcome.eligible
+
+
 async def test_FR_001_16_stub_verification_is_complete_without_review() -> None:
     request = VerificationRequest(case_id=CASE_ID, household_id=H_ELIGIBLE)
 

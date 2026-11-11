@@ -1,4 +1,4 @@
-"""GET /api/v1/cases/{case_id} and POST .../review-tasks/{task_id}/actions (001; TC-59–TC-65)."""
+"""Case routes (001): list, detail, history, review action (TC-59–65, 95, 104, 108, 110, 111)."""
 
 from __future__ import annotations
 
@@ -16,9 +16,12 @@ from packages.domain.case import (
     AllowedActions,
     Case,
     CaseClock,
+    CaseEvent,
+    CaseEventKind,
     CaseState,
     CaseType,
     CaseworkerActionType,
+    EventActorType,
     OpenReviewTask,
     ReviewReason,
 )
@@ -269,3 +272,141 @@ def test_FR_001_11_get_case_of_other_household_returns_404(harness: CaseApiHarne
     assert missing.status_code == 404
     assert foreign.json()["error"]["message"] == missing.json()["error"]["message"]
     assert anonymous.status_code == 401
+
+
+def test_FR_001_27_case_detail_is_a_superset_of_case_status(harness: CaseApiHarness) -> None:
+    case = put_case(harness, age_days=3)
+
+    harness.sign_in(Role.supervisor)
+    body = harness.client.get(f"/api/v1/cases/{case.case_id}").json()
+
+    assert body["case_type"] == "application"
+    assert body["coverage_period"] is None and body["override"] is None
+    assert body["demo_clock"] is False
+    assert body["days_remaining"] == 42
+
+
+def test_FR_001_26_list_cases_requires_sign_in(harness: CaseApiHarness) -> None:
+    put_case(harness)
+
+    anonymous = harness.client.get("/api/v1/cases")
+    seen = {}
+    for role in (Role.applicant, Role.caseworker, Role.supervisor):
+        harness.sign_in(role)
+        seen[role] = harness.client.get("/api/v1/cases")
+
+    assert anonymous.status_code == 401
+    assert {r: resp.status_code for r, resp in seen.items()} == {
+        Role.applicant: 200,
+        Role.caseworker: 200,
+        Role.supervisor: 200,
+    }
+    assert len(seen[Role.applicant].json()["items"]) == 1  # HOUSEHOLD's own case
+    assert seen[Role.caseworker].json()["next_cursor"] is None
+
+
+@pytest.mark.parametrize(
+    "query", ["cursor=!!", f"cursor={'x' * 201}", "limit=0", "limit=101", "state=nope"]
+)
+def test_FR_001_27_invalid_cursor_or_limit_returns_422(harness: CaseApiHarness, query: str) -> None:
+    harness.sign_in(Role.caseworker)
+
+    response = harness.client.get(f"/api/v1/cases?{query}")
+
+    assert response.status_code == 422
+    error = response.json()["error"]
+    assert error["code"] == "validation_failed"
+    assert error["fields"]
+
+
+def test_FR_001_27_list_filters_by_state_and_pages(harness: CaseApiHarness) -> None:
+    for n in range(3):
+        put_case(harness, household=uuid.uuid4(), age_days=n)
+    decided = put_case(harness, household=uuid.uuid4(), state=CaseState.decided)
+    harness.sign_in(Role.caseworker)
+
+    first = harness.client.get("/api/v1/cases?limit=2").json()
+    second = harness.client.get(f"/api/v1/cases?limit=2&cursor={first['next_cursor']}").json()
+    by_state = harness.client.get("/api/v1/cases?state=decided").json()
+
+    assert len(first["items"]) == 2 and first["next_cursor"]
+    assert len(second["items"]) == 1 and second["next_cursor"] is None
+    assert [i["case_id"] for i in by_state["items"]] == [str(decided.case_id)]
+
+
+def _events(harness: CaseApiHarness, case: Case, count: int) -> None:
+    for seq in range(1, count + 1):
+        harness.repo.events.append(
+            CaseEvent(
+                id=uuid.uuid4(),
+                case_id=case.case_id,
+                household_id=case.household_id,
+                seq=seq,
+                kind=CaseEventKind.state_changed,
+                case_time=FIXED_NOW,
+                real_time=FIXED_NOW,
+                actor_type=EventActorType.system,
+                reason_code="verification_started",
+                created_at=FIXED_NOW,
+            )
+        )
+
+
+def test_FR_001_27_history_rejects_applicant_role(harness: CaseApiHarness) -> None:
+    case = put_case(harness)
+    _events(harness, case, 1)
+    url = f"/api/v1/cases/{case.case_id}/history"
+
+    harness.sign_in(Role.applicant)
+    applicant = harness.client.get(url)
+    harness.sign_out()
+    anonymous = harness.client.get(url)
+    codes = {}
+    for role in (Role.caseworker, Role.supervisor):
+        harness.sign_in(role)
+        codes[role] = harness.client.get(url).status_code
+
+    assert applicant.status_code == 403
+    assert applicant.json()["error"]["code"] == "auth.forbidden"
+    assert anonymous.status_code == 401
+    assert codes == {Role.caseworker: 200, Role.supervisor: 200}
+
+
+def test_FR_001_27_history_of_missing_case_returns_404(harness: CaseApiHarness) -> None:
+    harness.sign_in(Role.caseworker)
+
+    response = harness.client.get(f"/api/v1/cases/{uuid.uuid4()}/history")
+
+    assert response.status_code == 404
+    assert response.json()["error"]["code"] == "not_found"
+
+
+def test_FR_001_27_history_pages_by_seq_cursor(harness: CaseApiHarness) -> None:
+    case = put_case(harness)
+    _events(harness, case, 120)
+    harness.sign_in(Role.caseworker)
+    url = f"/api/v1/cases/{case.case_id}/history"
+
+    first = harness.client.get(f"{url}?limit=50").json()
+    second = harness.client.get(f"{url}?limit=50&cursor={first['next_cursor']}").json()
+    third = harness.client.get(f"{url}?limit=50&cursor={second['next_cursor']}").json()
+
+    assert (first["next_cursor"], second["next_cursor"], third["next_cursor"]) == (50, 100, None)
+    assert [len(p["items"]) for p in (first, second, third)] == [50, 50, 20]
+    assert first["items"][0]["actor"] == "System"
+    assert harness.client.get(f"{url}?limit=0").status_code == 422
+    assert harness.client.get(f"{url}?limit=101").status_code == 422
+
+
+def test_FR_001_26_applicant_miss_is_audited_through_the_api(harness: CaseApiHarness) -> None:
+    other = put_case(harness, household=uuid.uuid4())
+    harness.sign_in(Role.applicant)
+
+    foreign = harness.client.get(f"/api/v1/cases/{other.case_id}")
+    missing = harness.client.get(f"/api/v1/cases/{uuid.uuid4()}")
+
+    assert foreign.status_code == missing.status_code == 404
+    assert foreign.json()["error"]["message"] == missing.json()["error"]["message"]
+    wrong_case = [e for e in harness.audit.entries if e.target_type == "case"]
+    assert len(wrong_case) == 2
+    assert str(other.case_id) in {e.target_id for e in wrong_case}

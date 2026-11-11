@@ -55,6 +55,43 @@ def stub_result_documents() -> list[dict[str, Any]]:
     ]
 
 
+def application_documents(cases: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """One synthetic `applications` document per case (ADR-001-08, PR-3): `_id` = `case_id`."""
+    return [
+        {
+            "_id": case["case_id"],
+            "case_id": case["case_id"],
+            "household_id": case["household_id"],
+            "submission_reference": case["submission_reference"],
+            "form": {
+                "members": [
+                    {
+                        "full_name": "SYNTH-NAME",
+                        "date_of_birth": datetime(1985, 6, 15, tzinfo=UTC),
+                        "relationship": "self",
+                        "citizenship_status": "us_citizen",
+                        "medicare_entitled": False,
+                        "zero_income": True,
+                        "jobs": [],
+                    }
+                ],
+                "address": {
+                    "line1": "1 Synthetic Way",
+                    "line2": None,
+                    "city": "Springfield",
+                    "state": "IL",
+                    "postal_code": "62701",
+                },
+            },
+            "submitted_at": case["clock"]["case_start"],
+            "synthetic": True,
+            "created_at": SEEDED_AT,
+            "updated_at": SEEDED_AT,
+        }
+        for case in cases
+    ]
+
+
 def sample_pay_stub() -> bytes:
     """A one-page synthetic pay stub. Content sits well inside the label bands."""
     buffer = io.BytesIO()
@@ -88,6 +125,10 @@ async def seed(settings: Settings) -> None:
         db = client[settings.MONGO_DB]
         await db["households"].insert_many(household_documents())
         await db["household_stub_results"].insert_many(stub_result_documents())
+        # No case is seeded today; once one is, it gets its application here.
+        seeded_cases = [doc async for doc in db["cases"].find()]
+        if seeded_cases:
+            await db["applications"].insert_many(application_documents(seeded_cases))
         await seed_users(db, password, SEEDED_AT)
         await db["_meta"].replace_one(
             {"_id": "dataset"},

@@ -39,4 +39,17 @@ async def test_FR_001_16_worker_reads_only_its_households_stub_result(
         await app.close()
 
     assert found is DeterminationOutcome.cannot_determine
-    assert unknown is DeterminationOutcome.eligible
+    assert unknown is DeterminationOutcome.cannot_determine  # fails closed (R21)
+
+
+async def test_FR_001_16_stub_results_lookup_of_unseeded_household_returns_no_result(
+    app_url: str, integration_settings: Settings
+) -> None:
+    app = make_client(app_url)
+    try:
+        results = MongoStubResults(app, integration_settings.MONGO_DB)
+        outcome = await results.outcome_for(Scope.for_worker(uuid.uuid4(), uuid.uuid4()))
+    finally:
+        await app.close()
+
+    assert outcome is DeterminationOutcome.cannot_determine

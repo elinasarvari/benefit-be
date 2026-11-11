@@ -3,12 +3,18 @@ from __future__ import annotations
 from typing import Annotated, Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Response
+from fastapi import APIRouter, Depends, Query, Request, Response
 
-from apps.api.dependencies.auth import require_roles
-from apps.api.dependencies.cases import get_case_repository, get_case_workflows
+from apps.api.dependencies.auth import request_id, require_roles
+from apps.api.dependencies.cases import get_case_repository, get_case_workflows, get_user_names
 from apps.api.dependencies.db import get_audit_writer, get_clock
-from apps.api.schemas.cases import CaseStatus, ReviewActionBody
+from apps.api.schemas.cases import (
+    CaseDetail,
+    CaseHistoryPage,
+    CasePage,
+    CaseState,
+    ReviewActionBody,
+)
 from apps.api.services import cases as cases_service
 from packages.domain.auth import Principal, Role
 from packages.domain.errors import ErrorEnvelope
@@ -36,18 +42,71 @@ ACTION_RESPONSES: dict[int | str, dict[str, Any]] = {
 
 
 @router.get(
+    "",
+    operation_id="listCases",
+    responses=COMMON,
+    summary="Cases with state, days remaining and at-risk flag, soonest deadline first",
+)
+async def list_cases(
+    principal: Annotated[
+        Principal, Depends(require_roles(Role.applicant, Role.caseworker, Role.supervisor))
+    ],
+    repo: Annotated[cases_service.CaseRepository, Depends(get_case_repository)],
+    clock: Annotated[Clock, Depends(get_clock)],
+    state: CaseState | None = None,
+    cursor: Annotated[str | None, Query(max_length=200)] = None,
+    limit: Annotated[int, Query(ge=1, le=100)] = cases_service.DEFAULT_LIST_LIMIT,
+) -> CasePage:
+    return await cases_service.list_cases(
+        principal, repo=repo, clock=clock, state=state, cursor=cursor, limit=limit
+    )
+
+
+@router.get(
     "/{case_id}",
     operation_id="getCase",
     responses=COMMON,
-    summary="Case state, deadline, days remaining and at-risk flag",
+    summary="Case state, dates, outcome, coverage period and override",
 )
 async def get_case(
     case_id: UUID,
-    principal: Annotated[Principal, Depends(require_roles(Role.applicant, Role.caseworker))],
+    request: Request,
+    principal: Annotated[
+        Principal, Depends(require_roles(Role.applicant, Role.caseworker, Role.supervisor))
+    ],
     repo: Annotated[cases_service.CaseRepository, Depends(get_case_repository)],
+    users: Annotated[cases_service.UserNames, Depends(get_user_names)],
+    audit: Annotated[AuditWriter, Depends(get_audit_writer)],
     clock: Annotated[Clock, Depends(get_clock)],
-) -> CaseStatus:
-    return await cases_service.get_case_status(case_id, principal, repo=repo, clock=clock)
+) -> CaseDetail:
+    return await cases_service.get_case_detail(
+        case_id,
+        principal,
+        repo=repo,
+        users=users,
+        audit=audit,
+        clock=clock,
+        reference_id=request_id(request),
+    )
+
+
+@router.get(
+    "/{case_id}/history",
+    operation_id="getCaseHistory",
+    responses=COMMON,
+    summary="Case history with case-clock and real time, actor and reason",
+)
+async def get_case_history(
+    case_id: UUID,
+    principal: Annotated[Principal, Depends(require_roles(Role.caseworker))],
+    repo: Annotated[cases_service.CaseRepository, Depends(get_case_repository)],
+    users: Annotated[cases_service.UserNames, Depends(get_user_names)],
+    cursor: Annotated[int, Query(ge=0)] = 0,
+    limit: Annotated[int, Query(ge=1, le=100)] = cases_service.DEFAULT_HISTORY_LIMIT,
+) -> CaseHistoryPage:
+    return await cases_service.get_case_history(
+        case_id, principal, repo=repo, users=users, cursor=cursor, limit=limit
+    )
 
 
 @router.post(

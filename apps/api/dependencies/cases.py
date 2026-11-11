@@ -8,6 +8,7 @@ from temporalio.client import Client
 from apps.api.dependencies.db import get_database, get_mongo, get_settings
 from apps.api.repositories.cases import MongoCaseRepository
 from apps.api.repositories.determinations import MongoDeterminationRepository
+from apps.api.repositories.explanations import MongoExplanationRepository
 from apps.api.repositories.users import UserRepository
 from apps.api.temporal_client import TemporalCaseWorkflows, connect_temporal
 
@@ -18,6 +19,10 @@ def get_case_repository(request: Request) -> MongoCaseRepository:
 
 def get_determination_repository(request: Request) -> MongoDeterminationRepository:
     return MongoDeterminationRepository(get_mongo(request), get_settings(request).MONGO_DB)
+
+
+def get_explanation_repository(request: Request) -> MongoExplanationRepository:
+    return MongoExplanationRepository(get_mongo(request), get_settings(request).MONGO_DB)
 
 
 def get_user_names(request: Request) -> UserRepository:

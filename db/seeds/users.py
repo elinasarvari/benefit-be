@@ -8,7 +8,7 @@ from typing import Any
 
 from pymongo.asynchronous.database import AsyncDatabase
 
-from db.seeds.ids import HOUSEHOLD_A, HOUSEHOLD_B, HOUSEHOLD_C, seeded_id
+from db.seeds.ids import HOUSEHOLD_A, HOUSEHOLD_APPLICANT4, HOUSEHOLD_B, HOUSEHOLD_C, seeded_id
 from packages.domain.auth import Role
 from packages.platform.auth.passwords import hash_password
 
@@ -16,6 +16,7 @@ DEMO_ACCOUNTS: list[tuple[str, str, Role, uuid.UUID | None]] = [
     ("applicant1", "Applicant One", Role.applicant, HOUSEHOLD_A),
     ("applicant2", "Applicant Two", Role.applicant, HOUSEHOLD_B),
     ("applicant3", "Applicant Three", Role.applicant, HOUSEHOLD_C),
+    ("applicant4", "Applicant Four", Role.applicant, HOUSEHOLD_APPLICANT4),
     ("caseworker1", "Caseworker One", Role.caseworker, None),
     ("supervisor1", "Supervisor One", Role.supervisor, None),
 ]

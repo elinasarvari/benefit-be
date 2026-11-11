@@ -6,7 +6,7 @@ Checks the documents `seed` inserts, built from the same dataset, so no database
 from __future__ import annotations
 
 import json
-from datetime import date
+from datetime import UTC, date, datetime
 from functools import cache
 from pathlib import Path
 from typing import Any
@@ -18,6 +18,10 @@ from db.seeds.generate import generate_files
 from db.seeds.history import History, build_history
 from db.seeds.households import SeededDataset, build_dataset
 from db.seeds.ids import HOUSEHOLD_A, HOUSEHOLD_B, HOUSEHOLD_C
+from db.seeds.records import to_document
+from packages.domain.eligibility import DeterminationRecord
+from packages.domain.explanation import ExplanationAudience
+from packages.rules.explanations import explain_determination
 
 ANCHOR = date(2026, 11, 10)
 
@@ -105,17 +109,10 @@ def test_FR_003_22_history_files_reference_existing_determinations_and_cases(
     case_ids = {c["_id"] for c in documents["cases"]}
     outbox = {n["case_id"]: n["notice_type"] for n in documents["outbox"]}
 
-    explanations = sorted((tmp_path / "history" / "explanations").glob("*.json"))
     notices = sorted((tmp_path / "history" / "notices").glob("*.json"))
 
-    assert {UUID(p.stem) for p in explanations} == determination_ids
-    for path in explanations:
-        explanation = json.loads(path.read_text())
-        assert explanation["determination_id"] == path.stem
-        assert UUID(explanation["case_id"]) in case_ids
-        assert explanation["synthetic"] is True
-        assert explanation["citations"]
-        assert len(explanation["rule_ids"]) == 6
+    assert not (tmp_path / "history" / "explanations").exists()
+    assert {d["determination_id"] for d in documents["decision_explanations"]} == determination_ids
     assert {UUID(p.name.split(".")[0]) for p in notices} == case_ids
     for path in notices:
         case_id_text, notice_type, suffix = path.name.split(".")
@@ -134,3 +131,51 @@ def test_FR_003_22_history_is_a_function_of_seed_and_anchor(anchor: date) -> Non
 
     assert first.documents == second.documents
     assert first.counts()["cases"] > 0
+
+
+def _record(determination: dict[str, Any]) -> DeterminationRecord:
+    fields = {k: v for k, v in determination.items() if k not in ("_id", "synthetic")}
+    return DeterminationRecord.model_validate({**fields, "determination_id": determination["_id"]})
+
+
+def _stored(determination_id: UUID) -> dict[ExplanationAudience, dict[str, Any]]:
+    return {
+        ExplanationAudience(d["audience"]): d
+        for d in _history().documents["decision_explanations"]
+        if d["determination_id"] == determination_id
+    }
+
+
+def test_FR_004_13_03_seed_stores_two_synthetic_explanations_equal_to_explain_function_per_determination() -> (  # noqa: E501
+    None
+):
+    determinations = _history().documents["determinations"]
+
+    assert len(_history().documents["decision_explanations"]) == 2 * len(determinations)
+    for determination in determinations:
+        record = _record(determination)
+        stored = _stored(determination["_id"])
+        assert set(stored) == set(ExplanationAudience)
+        for audience, document in stored.items():
+            expected = to_document(explain_determination(record, audience)) | {"synthetic": True}
+            assert document["_id"] == uuid5(determination["_id"], audience.value)
+            assert document["synthetic"] is True
+            assert {k: v for k, v in document.items() if k != "_id"} == expected
+            assert document["built_at"] == determination["recorded_at"]
+
+
+def test_FR_004_13_05_seeded_explanation_under_earlier_rule_set_keeps_its_manual_version_date() -> (  # noqa: E501
+    None
+):
+    earlier = [
+        d
+        for d in _history().documents["determinations"]
+        if d["determination"]["rule_set_id"] == "IL-ADULT-2025"
+    ]
+
+    assert earlier
+    for determination in earlier:
+        for document in _stored(determination["_id"]).values():
+            assert document["citations"] or document["audience"] == "applicant"
+            for citation in document["citations"]:
+                assert citation["manual_version"] == datetime(2026, 1, 1, tzinfo=UTC)

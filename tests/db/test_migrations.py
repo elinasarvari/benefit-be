@@ -65,6 +65,7 @@ async def test_migration_runner_records_and_skips_applied_versions(
         "0004_case_screens",
         "0005_eligibility",
         "0006_mvp",
+        "0007_decision_explanations",
     ]
 
 
@@ -225,6 +226,7 @@ async def test_FR_001_01_migration_0003_downgrade_restores_baseline_validators(
         indexes = await ctx.db["cases"].index_information()
 
     assert downgraded == [
+        "0007_decision_explanations",
         "0006_mvp",
         "0005_eligibility",
         "0004_case_screens",
@@ -235,6 +237,7 @@ async def test_FR_001_01_migration_0003_downgrade_restores_baseline_validators(
         "0004_case_screens",
         "0005_eligibility",
         "0006_mvp",
+        "0007_decision_explanations",
     ]
     for name in CASE_COLLECTIONS:
         assert baseline[name] != tightened[name]
@@ -331,10 +334,20 @@ async def test_FR_001_27_migration_0004_adds_open_deadline_index_and_downgrade_d
     key = [("open", 1), ("decision_deadline", 1), ("_id", 1)]
     assert indexes["open_deadline"]["key"] == key
     assert "applications" in collections
-    assert downgraded == ["0006_mvp", "0005_eligibility", "0004_case_screens"]
+    assert downgraded == [
+        "0007_decision_explanations",
+        "0006_mvp",
+        "0005_eligibility",
+        "0004_case_screens",
+    ]
     assert "open_deadline" not in down_indexes
     assert "applications" not in down_collections
     assert "submission_reference_unique" in down_indexes  # 0003 is untouched
-    assert upgraded == ["0004_case_screens", "0005_eligibility", "0006_mvp"]
+    assert upgraded == [
+        "0004_case_screens",
+        "0005_eligibility",
+        "0006_mvp",
+        "0007_decision_explanations",
+    ]
     assert again_indexes["open_deadline"]["key"] == key
     assert "applications" in again_collections

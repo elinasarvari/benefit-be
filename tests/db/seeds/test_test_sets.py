@@ -152,7 +152,7 @@ def test_FR_003_10_manifest_hashes_identical_across_two_runs_with_same_seed(
     assert first["seed"] == SEED
     assert first["files"]
     assert "manifest.json" not in first["files"]
-    for kind in ("testsets/known_answers.json", "history/explanations", "documents/"):
+    for kind in ("testsets/known_answers.json", "history/notices", "documents/"):
         assert any(name.startswith(kind) or name == kind for name in first["files"]), kind
     assert (tmp_path / "a" / "manifest.json").read_text() == (
         tmp_path / "b" / "manifest.json"

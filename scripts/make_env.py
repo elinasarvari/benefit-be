@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import secrets
 import sys
 from pathlib import Path
@@ -20,7 +21,8 @@ def main() -> int:
         print(".env already exists; leaving it alone.")
         return 0
     owner_pw, app_pw = token(), token()
-    hosts = "localhost:27017/?replicaSet=rs0&authSource=admin"
+    port = os.environ.get("MONGO_PORT", "27017")
+    hosts = f"localhost:{port}/?replicaSet=rs0&authSource=admin"
     generated = {
         "SESSION_SECRET": token(),
         "SYSTEM_CREDENTIAL_SECRET": token(),

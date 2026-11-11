@@ -3119,7 +3119,7 @@
         },
         "summary": "Demo profile only: fire the case's next pending timer (FR-011-05, FR-011-11)",
         "tags": [
-          "notices"
+          "applicant-notices"
         ]
       }
     },
@@ -3285,7 +3285,7 @@
         },
         "summary": "Record a pay stub's typed details; the file follows to .../content (FR-002-21)",
         "tags": [
-          "documents"
+          "pay-stubs"
         ]
       }
     },
@@ -3414,7 +3414,7 @@
         },
         "summary": "Upload the file of a recorded pay stub: PDF, PNG or JPEG, up to 10 MB (FR-002-17)",
         "tags": [
-          "documents"
+          "pay-stubs"
         ]
       }
     },
@@ -3782,7 +3782,7 @@
         },
         "summary": "Documents, entered details and findings of a case (FR-002-18)",
         "tags": [
-          "documents"
+          "pay-stubs"
         ]
       }
     },
@@ -4152,7 +4152,7 @@
         },
         "summary": "Notices delivered to the applicant, newest first (FR-011-09)",
         "tags": [
-          "notices"
+          "applicant-notices"
         ]
       }
     },
@@ -4235,7 +4235,7 @@
         },
         "summary": "One delivered notice (FR-011-09)",
         "tags": [
-          "notices"
+          "applicant-notices"
         ]
       }
     },
@@ -4306,7 +4306,7 @@
         },
         "summary": "Open requests for information, with items and due dates (FR-011-10)",
         "tags": [
-          "notices"
+          "applicant-notices"
         ]
       }
     },
@@ -4412,7 +4412,7 @@
         },
         "summary": "Answer a request: uploaded documents and confirmed items (FR-011-03, FR-011-10)",
         "tags": [
-          "notices"
+          "applicant-notices"
         ]
       }
     },

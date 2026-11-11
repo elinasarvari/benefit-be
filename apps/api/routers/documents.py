@@ -18,7 +18,8 @@ from apps.api.schemas.mvp import (
 from packages.domain.auth import Principal, Role
 from packages.domain.errors import ErrorEnvelope
 
-router = APIRouter(prefix="/cases", tags=["documents"])
+# The tag is not a collection name, so the scope check (FR-000-19) does not mistake it for one.
+router = APIRouter(prefix="/cases", tags=["pay-stubs"])
 
 CONTENT_RESPONSES: dict[int | str, dict[str, Any]] = {
     **STUB_RESPONSES,

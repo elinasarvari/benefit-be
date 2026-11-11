@@ -16,6 +16,8 @@ class ErrorCode(StrEnum):
     validation_failed = "validation_failed"
     internal_error = "internal_error"
     dependency_unavailable = "dependency_unavailable"
+    # A contract endpoint whose feature is not built yet (MVP contracts PR).
+    not_implemented = "not_implemented"
 
 
 class FieldError(BaseModel):

@@ -66,7 +66,7 @@ async def state(client: Client, settings: Settings, change: CaseChange) -> dict[
     case = await db["cases"].find_one({"_id": change.case_id})
     assert case is not None
     audit = await client[settings.MONGO_AUDIT_DB]["audit_log"].count_documents(
-        {"reference_id": str(change.action.id)}
+        {"reference_id": str(change.action.action_id)}
     )
     return {**counts, "case": (case["state"], case["last_seq"]), "audit": audit}
 

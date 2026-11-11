@@ -104,7 +104,7 @@ async def test_FR_001_04_record_case_change_retry_is_noop(
     assert await count(client, settings, "outbox", {"case_id": case_id}) == 1
     assert await count(client, settings, "caseworker_actions", {"case_id": case_id}) == 1
     assert change.action is not None
-    assert await audit_count(client, settings, change.action.id) == 1
+    assert await audit_count(client, settings, change.action.action_id) == 1
 
 
 async def test_FR_001_10_case_change_writes_event_with_times_actor_reason(
@@ -223,7 +223,7 @@ async def test_FR_001_04_failed_transaction_writes_nothing(
     case = await read_case(client, settings, case_id)
     assert (case["state"], case["last_seq"]) == ("submitted", 0)
     assert change.action is not None
-    assert await audit_count(client, settings, change.action.id) == 0
+    assert await audit_count(client, settings, change.action.action_id) == 0
 
 
 async def test_FR_001_10_worker_scope_must_match_the_change(

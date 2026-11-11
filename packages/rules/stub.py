@@ -6,20 +6,11 @@ from decimal import Decimal
 from packages.domain.eligibility import (
     Determination,
     EligibilityResult,
-    RuleId,
     RuleOutcome,
     RuleResult,
 )
 from packages.domain.household import HouseholdSnapshot
-
-_POLICY_REFS = {
-    RuleId.ELIG_01: "TM-2.1",
-    RuleId.ELIG_02: "TM-2.2",
-    RuleId.ELIG_03: "TM-2.3",
-    RuleId.ELIG_04: "TM-2.4",
-    RuleId.ELIG_05: "TM-2.5",
-    RuleId.ELIG_06: "TM-3.1",
-}
+from packages.rules.rule_sets import POLICY_REFS
 
 
 class StubRulesEngine:
@@ -43,7 +34,7 @@ class StubRulesEngine:
                     threshold=None,
                     policy_ref=ref,
                 )
-                for rule, ref in _POLICY_REFS.items()
+                for rule, ref in POLICY_REFS.items()
             ],
             missing_items=[],
         )

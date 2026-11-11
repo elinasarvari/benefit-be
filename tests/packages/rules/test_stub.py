@@ -3,6 +3,8 @@ from uuid import UUID
 
 from packages.domain.eligibility import EligibilityResult, RuleId, RuleOutcome
 from packages.domain.household import HouseholdSnapshot, MemberFacts
+from packages.rules import stub as stub_module
+from packages.rules.rule_sets import POLICY_REFS
 from packages.rules.stub import StubRulesEngine
 
 
@@ -26,6 +28,13 @@ def _snapshot() -> HouseholdSnapshot:
             )
         ],
     )
+
+
+def test_FR_003_05_stub_policy_refs_are_the_engine_policy_refs() -> None:
+    determination = StubRulesEngine().evaluate(_snapshot(), date(2026, 6, 1))
+
+    assert {r.rule_id: r.policy_ref for r in determination.rule_results} == POLICY_REFS
+    assert not hasattr(stub_module, "_POLICY_REFS")
 
 
 def test_FR_003_05_stub_engine_returns_eligible_with_six_passing_rule_results() -> None:

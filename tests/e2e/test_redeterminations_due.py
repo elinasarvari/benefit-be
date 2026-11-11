@@ -62,23 +62,26 @@ async def _trigger_and_collect() -> tuple[list[tuple[UUID, UUID]], list[str]]:
     assert process.returncode == 0, output.decode()
 
     temporal = await connect_temporal(settings)
-    missing = [str(period) for _, period in due]
-    deadline = asyncio.get_running_loop().time() + WAIT_S
-    started: list[str] = []
-    while missing and asyncio.get_running_loop().time() < deadline:
-        started = []
-        for household, period in due:
-            workflow_id = workflow_id_for(redetermination_case_id(household, period))
-            try:
-                await temporal.get_workflow_handle(workflow_id).describe()
-            except RPCError:
-                pass
-            else:
-                started.append(str(period))
-        missing = [str(p) for _, p in due if str(p) not in started]
-        if missing:
-            await asyncio.sleep(1)
-    return due, missing
+    try:
+        missing = [str(period) for _, period in due]
+        deadline = asyncio.get_running_loop().time() + WAIT_S
+        started: list[str] = []
+        while missing and asyncio.get_running_loop().time() < deadline:
+            started = []
+            for household, period in due:
+                workflow_id = workflow_id_for(redetermination_case_id(household, period))
+                try:
+                    await temporal.get_workflow_handle(workflow_id).describe()
+                except RPCError:
+                    pass
+                else:
+                    started.append(str(period))
+            missing = [str(p) for _, p in due if str(p) not in started]
+            if missing:
+                await asyncio.sleep(1)
+        return due, missing
+    finally:
+        await temporal.close()
 
 
 @pytest.mark.asyncio

@@ -28,6 +28,7 @@ CREATED_HOUSEHOLD_ONLY = ["reference_records"]
 # (collection, keys, index name, unique)
 INDEXES: list[tuple[str, list[tuple[str, int]], str, bool]] = [
     ("pay_stub_details", [("document_id", 1)], "document_unique", True),
+    ("pay_stub_details", [("case_id", 1)], "case", False),
     ("verification_results", [("case_id", 1)], "case_unique", True),
     (
         "notices",
@@ -35,6 +36,7 @@ INDEXES: list[tuple[str, list[tuple[str, int]], str, bool]] = [
         "household_status",
         False,
     ),
+    ("notices", [("case_id", 1), ("created_at", -1)], "case_created", False),
     ("applicant_responses", [("case_id", 1), ("notice_id", 1)], "case_notice", False),
     (
         "decision_explanations",
@@ -42,6 +44,7 @@ INDEXES: list[tuple[str, list[tuple[str, int]], str, bool]] = [
         "determination_audience_unique",
         True,
     ),
+    ("decision_explanations", [("case_id", 1)], "case", False),
     ("reference_records", [("household_id", 1), ("member_id", 1)], "household_member_unique", True),
 ]
 

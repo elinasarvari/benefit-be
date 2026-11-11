@@ -10,12 +10,9 @@ import calendar
 from collections.abc import Iterable
 from datetime import date, timedelta
 
-from packages.domain.case import (
-    CaseState,
-    CaseworkerActionType,
-    DenialReason,
-    ReviewReason,
-)
+from packages.domain.case import CaseState, DenialReason
+from packages.domain.case import allowed_actions_for as allowed_actions_for  # data table (BA-6)
+from packages.domain.review import ReviewReason
 
 DECISION_DAYS = 45
 COVERAGE_MONTHS = 12
@@ -38,17 +35,6 @@ TRANSITIONS: dict[tuple[CaseState, CaseState], str] = {
     (CaseState.under_review, CaseState.awaiting_applicant): "010",
 }
 
-_ACTIONS_001: dict[ReviewReason, tuple[CaseworkerActionType, ...]] = {
-    ReviewReason.adverse_determination: (
-        CaseworkerActionType.approve_denial,
-        CaseworkerActionType.override_to_approve,
-    ),
-    ReviewReason.cannot_determine: (
-        CaseworkerActionType.approve_denial,
-        CaseworkerActionType.override_to_approve,
-    ),
-}
-
 # FR-001-16: when several rules fail, the denial names income first.
 _DENIAL_PRECEDENCE = (
     DenialReason.income_over_limit,
@@ -60,11 +46,6 @@ _DENIAL_PRECEDENCE = (
 def can_transition(from_state: CaseState, to_state: CaseState) -> bool:
     """True only for table rows owned by a live feature. `decided` is terminal."""
     return TRANSITIONS.get((from_state, to_state)) in ACTIVE_FEATURES
-
-
-def allowed_actions_for(reason: ReviewReason) -> list[CaseworkerActionType]:
-    """Caseworker actions 001 accepts on a review task; other reasons belong to 010."""
-    return list(_ACTIONS_001.get(reason, ()))
 
 
 def decision_deadline(received_on: date) -> date:

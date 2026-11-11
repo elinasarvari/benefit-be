@@ -18,7 +18,8 @@ from apps.api.repositories.cases import MongoCaseRepository
 from apps.worker.repositories.cases import CaseRepository
 from packages.domain.audit import ActorType, AuditAction, AuditLogEntry, AuditOutcome
 from packages.domain.auth import Role
-from packages.domain.case import ActionOutcome, CaseChange, CaseworkerAction, CaseworkerActionType
+from packages.domain.case import ActionOutcome, ActionType, CaseChange, CaseworkerAction
+from packages.domain.review import RejectionCode
 from packages.platform.audit import MongoAuditWriter
 from packages.platform.mongo import Client, make_client
 from packages.platform.scope import Scope, ScopeKind
@@ -119,16 +120,18 @@ async def test_FR_001_02_api_refusal_recorded_once_with_audit_entry(
     case_id, household_id = await insert_case(settings)
     reviewer, request_id, now = uuid.uuid4(), uuid.uuid4(), datetime.now(UTC)
     action = CaseworkerAction(
-        id=request_id,
-        case_id=case_id,
-        household_id=household_id,
+        action_id=request_id,
         task_id=uuid.uuid5(case_id, "task"),
-        action=CaseworkerActionType.override_to_approve,
+        action=ActionType.override_to_approve,
         reviewer_id=reviewer,
+        reviewer_role=Role.caseworker,
         reason=SYNTH_REASON,
+        submitted_at=now,
+        household_id=household_id,
+        case_id=case_id,
         outcome=ActionOutcome.rejected,
-        case_time=now,
-        real_time=now,
+        rejection_code=RejectionCode.task_closed,
+        recorded_at=now,
     )
     entry = AuditLogEntry(
         occurred_at=now,

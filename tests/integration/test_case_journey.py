@@ -145,11 +145,12 @@ async def test_FR_001_09_journey_ineligible_approve_denial_decides_denied(
 
     assert (decided["outcome"], decided["denial_reason"]) == ("denied", "income_over_limit")
     assert decided["open_review_task"] is None
-    assert [(t["status"], t["resolution"]["action"]) for t in tasks] == [
-        ("resolved", "approve_denial")
+    # 010's shapes (ADR-001-11): the task is closed by the applied action.
+    assert [(a["action"], a["outcome"], a["reviewer_id"]) for a in actions] == [
+        ("approve_denial", "applied", seeded_user(CASEWORKER).id)
     ]
-    assert [(a["outcome"], a["reviewer_id"]) for a in actions] == [
-        ("applied", seeded_user(CASEWORKER).id)
+    assert [(t["status"], t["closed_by_action_id"]) for t in tasks] == [
+        ("closed", actions[0]["action_id"])
     ]
     assert [(n["notice_type"], n["status"]) for n in outbox] == [("denial", "requested")]
     assert coverage == []
@@ -177,11 +178,14 @@ async def test_FR_001_20_journey_override_to_approve_keeps_determination(
     override = case["override"]
     assert override["reason"] == SYNTH_REASON
     assert override["reviewer_id"] == seeded_user(CASEWORKER).id
-    # The determination is referenced, never rewritten: the task's evidence still says ineligible.
+    # The determination is referenced, never rewritten: the task points at the same one, which
+    # still says ineligible (010 R3: evidence by reference).
     (task,) = tasks
-    assert override["determination_id"] == task["evidence"]["determination_id"]
-    assert task["evidence"]["failed_rules"] == ["income_over_limit"]
-    assert task["resolution"]["action"] == "override_to_approve"
+    assert task["cause"] == "ineligible"
+    assert task["evidence_refs"] == [
+        {"kind": "determination_id", "id": override["determination_id"]}
+    ]
+    assert task["status"] == "closed" and task["closed_by_action_id"] is not None
     assert len(coverage) == 1
     assert [n["notice_type"] for n in outbox] == ["approval"]
 
@@ -208,7 +212,8 @@ async def test_FR_001_16_journey_cannot_determine_waits_on_task(
     assert (case["state"], case["open"], case.get("outcome")) == ("under_review", True, None)
     (task,) = tasks
     assert (task["status"], task["reason"]) == ("open", "cannot_determine")
-    assert task["evidence"]["missing_items"] == ["pay_stub"]
+    assert task["cause"] == "cannot_determine" and task["blocking"] is True
+    assert [ref["kind"] for ref in task["evidence_refs"]] == ["determination_id"]
     assert outbox == [] and coverage == []
     assert running is WorkflowExecutionStatus.RUNNING
 

@@ -1,9 +1,12 @@
 """Case lifecycle (001): tighten the case collections' validators and add their indexes.
 
-Tightens the minimal `0001_baseline` validators of `cases`, `case_events`, `review_tasks`,
-`caseworker_actions`, `coverage_periods` and `outbox` to the fields and enums of
+Tightens the minimal `0001_baseline` validators of `cases`, `case_events`, `coverage_periods` and
+`outbox` to the fields and enums of
 specs/001-case-lifecycle/data-model.md, lets `households` carry the synthetic 001 stub field, and
 creates `household_stub_results`, the copy of that field the worker may read (ADR-001-06).
+
+`review_tasks` and `caseworker_actions` are left as `0002_review_queue` (010) shapes them: 001
+writes those collections in 010's shape (ADR-001-11).
 
 The enum values are copied here, not imported from `packages/domain/case.py`: an applied migration
 never changes (KD-11), so a later feature that adds a value adds it in its own migration.
@@ -27,7 +30,6 @@ DATE: dict[str, Any] = {"bsonType": "date"}
 DATE_OR_NULL: dict[str, Any] = {"bsonType": ["date", "null"]}
 INT: dict[str, Any] = {"bsonType": ["int", "long"]}
 BOOL: dict[str, Any] = {"bsonType": "bool"}
-REASON_TEXT: dict[str, Any] = {"bsonType": ["string", "null"], "maxLength": 500}
 CODE: dict[str, Any] = {"bsonType": "string", "maxLength": 64, "pattern": "^[a-z0-9_]+$"}
 
 CASE_TYPES = ["application", "redetermination"]
@@ -47,27 +49,6 @@ CASE_OUTCOMES = [
     "ended_by_caseworker",
 ]
 DENIAL_REASONS = ["income_over_limit", "other_rule_not_met", "missing_information"]
-REVIEW_REASONS = [
-    "adverse_determination",
-    "cannot_determine",
-    "notice_approval",
-    "verification_review",
-    "missed_response_deadline",
-    "explanation_review",
-]
-CASEWORKER_ACTIONS = [
-    "approve_denial",
-    "override_to_approve",
-    "request_information",
-    "correct_value",
-    "dismiss_finding",
-    "accept_findings",
-    "approve",
-    "edit_and_approve",
-    "deny_for_missing_information",
-    "extend_15_days",
-    "continue_with_held_data",
-]
 EVENT_KINDS = [
     "state_changed",
     "review_task_opened",
@@ -193,78 +174,6 @@ CASE_EVENTS_SCHEMA = _schema(
     },
 )
 
-REVIEW_TASKS_SCHEMA = _schema(
-    [
-        "_id",
-        "case_id",
-        "household_id",
-        "reason",
-        "evidence",
-        "allowed_actions",
-        "status",
-        "opened_case_time",
-        "opened_real_time",
-    ],
-    {
-        "_id": UUID,
-        "case_id": UUID,
-        "household_id": UUID,
-        "reason": _enum(REVIEW_REASONS),
-        "evidence": {
-            "bsonType": "object",
-            "additionalProperties": False,
-            "properties": {
-                "determination_id": UUID_OR_NULL,
-                "missing_items": {"bsonType": "array", "items": CODE},
-                "failed_rules": {"bsonType": "array", "items": CODE},
-            },
-        },
-        "allowed_actions": {"bsonType": "array", "items": _enum(CASEWORKER_ACTIONS)},
-        "status": _enum(["open", "resolved"]),
-        "opened_case_time": DATE,
-        "opened_real_time": DATE,
-        "reminder": BOOL,
-        "escalated": BOOL,
-        "resolution": {
-            "bsonType": ["object", "null"],
-            "additionalProperties": False,
-            "required": ["action", "reviewer_id", "case_time"],
-            "properties": {
-                "action": _enum(CASEWORKER_ACTIONS),
-                "reviewer_id": UUID,
-                "reason": REASON_TEXT,
-                "case_time": DATE,
-            },
-        },
-    },
-)
-
-CASEWORKER_ACTIONS_SCHEMA = _schema(
-    [
-        "_id",
-        "case_id",
-        "household_id",
-        "task_id",
-        "action",
-        "reviewer_id",
-        "outcome",
-        "case_time",
-        "real_time",
-    ],
-    {
-        "_id": UUID,  # = request_id
-        "case_id": UUID,
-        "household_id": UUID,
-        "task_id": UUID,
-        "action": _enum(CASEWORKER_ACTIONS),
-        "reviewer_id": UUID,
-        "reason": REASON_TEXT,
-        "outcome": _enum(["applied", "rejected"]),
-        "case_time": DATE,
-        "real_time": DATE,
-    },
-)
-
 COVERAGE_PERIODS_SCHEMA = _schema(
     ["_id", "household_id", "case_id", "start_date", "end_date", "status"],
     {
@@ -314,8 +223,6 @@ CREATED_HOUSEHOLD_ONLY = [HOUSEHOLD_STUB_RESULTS]
 SCHEMAS: dict[str, dict[str, Any]] = {
     "cases": CASES_SCHEMA,
     "case_events": CASE_EVENTS_SCHEMA,
-    "review_tasks": REVIEW_TASKS_SCHEMA,
-    "caseworker_actions": CASEWORKER_ACTIONS_SCHEMA,
     "coverage_periods": COVERAGE_PERIODS_SCHEMA,
     "outbox": OUTBOX_SCHEMA,
     "households": HOUSEHOLDS_SCHEMA,
@@ -332,7 +239,6 @@ INDEXES: list[tuple[str, str, list[tuple[str, int]], dict[str, Any]]] = [
     ),
     ("cases", "state_deadline", [("state", 1), ("decision_deadline", 1)], {}),
     ("case_events", "case_seq_unique", [("case_id", 1), ("seq", 1)], {"unique": True}),
-    ("review_tasks", "status_opened", [("status", 1), ("opened_real_time", 1)], {}),
     ("coverage_periods", "household_end_date", [("household_id", 1), ("end_date", 1)], {}),
 ]
 

@@ -28,7 +28,6 @@ from packages.domain.audit import (
 )
 from packages.domain.auth import Principal, Role
 from packages.domain.case import (
-    ActionOutcome,
     AllowedActions,
     ApplicationSubmission,
     Case,
@@ -43,8 +42,6 @@ from packages.domain.case import (
     CaseStatus,
     CaseSummary,
     CaseType,
-    CaseworkerAction,
-    CaseworkerActionRequest,
     CoveragePeriod,
     CoverageSummary,
     EventActorType,
@@ -56,6 +53,12 @@ from packages.domain.case import (
     workflow_id_for,
 )
 from packages.domain.errors import FieldError
+from packages.domain.review import (
+    ActionOutcome,
+    CaseworkerAction,
+    CaseworkerActionSignal,
+    RejectionCode,
+)
 from packages.platform.audit import AuditWriter
 from packages.platform.clock import Clock, case_now, case_today
 from packages.platform.errors import Conflict, Forbidden, InvalidInput, NotFound
@@ -134,7 +137,7 @@ class CaseWorkflows(Protocol):
     async def allowed_actions(self, case_id: UUID) -> AllowedActions: ...
 
     async def signal_action(
-        self, case_id: UUID, request: CaseworkerActionRequest, *, best_effort: bool = False
+        self, case_id: UUID, request: CaseworkerActionSignal, *, best_effort: bool = False
     ) -> bool:
         """True when delivered. With `best_effort`, a failed delivery returns False."""
         ...
@@ -457,12 +460,15 @@ async def submit_review_action(
     caller gets a 409.
     """
     bind_context(case_id=str(case_id), workflow_id=workflow_id_for(case_id))
-    request = CaseworkerActionRequest(
+    # 010's signal payload (ADR-001-11): the body's request_id is the action's idempotency key.
+    request = CaseworkerActionSignal(
+        action_id=body.request_id,
         task_id=task_id,
         action=body.action,
         reviewer_id=principal.user_id,  # never from the body
-        reason=body.reason,
-        request_id=body.request_id,
+        reviewer_role=principal.role,
+        reason=body.reason or None,  # the signal's reason is 1-500 chars or absent
+        submitted_at=clock.now(),
     )
     allowed = await workflows.allowed_actions(case_id)
     if allowed.task_id != task_id or body.action not in allowed.actions:
@@ -476,30 +482,29 @@ async def submit_review_action(
 
 async def _record_refusal(
     case_id: UUID,
-    request: CaseworkerActionRequest,
+    request: CaseworkerActionSignal,
     principal: Principal,
     *,
     repo: CaseRepository,
     audit: AuditWriter,
     clock: Clock,
 ) -> None:
-    """`caseworker_actions` with `outcome: rejected` plus its audit entry, keyed by request_id."""
+    """`caseworker_actions` with `outcome: rejected` plus its audit entry, keyed by action_id.
+
+    Only a workflow that can no longer take the signal gets here: the case is decided and its
+    task closed (`task_closed`)."""
     scope = Scope.for_principal(principal)
     case = await repo.find_case(scope, case_id)
     if case is None:
         raise NotFound()
     now = clock.now()
     action = CaseworkerAction(
-        id=request.request_id,
-        case_id=case.case_id,
+        **request.model_dump(),
         household_id=case.household_id,
-        task_id=request.task_id,
-        action=request.action,
-        reviewer_id=request.reviewer_id,
-        reason=request.reason,
+        case_id=case.case_id,
         outcome=ActionOutcome.rejected,
-        case_time=case_now(case.clock, now),
-        real_time=now,
+        rejection_code=RejectionCode.task_closed,
+        recorded_at=now,
     )
     entry = AuditLogEntry(
         occurred_at=now,
@@ -510,6 +515,6 @@ async def _record_refusal(
         target_type="case",
         target_id=str(case_id),
         outcome=AuditOutcome.refused,
-        reference_id=str(request.request_id),
+        reference_id=str(request.action_id),
     )
     await repo.record_rejected_action(scope, action, entry, audit)

@@ -1,6 +1,23 @@
 {
   "components": {
     "schemas": {
+      "ActionType": {
+        "enum": [
+          "approve_denial",
+          "override_to_approve",
+          "request_information",
+          "correct_value",
+          "dismiss_finding",
+          "accept_findings",
+          "approve",
+          "edit_and_approve",
+          "deny_missing_information",
+          "extend_15_days",
+          "continue_with_held_data"
+        ],
+        "title": "ActionType",
+        "type": "string"
+      },
       "ApplicantMember": {
         "additionalProperties": false,
         "properties": {
@@ -519,23 +536,6 @@
         "title": "CaseType",
         "type": "string"
       },
-      "CaseworkerActionType": {
-        "enum": [
-          "approve_denial",
-          "override_to_approve",
-          "request_information",
-          "correct_value",
-          "dismiss_finding",
-          "accept_findings",
-          "approve",
-          "edit_and_approve",
-          "deny_for_missing_information",
-          "extend_15_days",
-          "continue_with_held_data"
-        ],
-        "title": "CaseworkerActionType",
-        "type": "string"
-      },
       "CheckStatus": {
         "enum": [
           "ok",
@@ -838,7 +838,7 @@
         "properties": {
           "allowed_actions": {
             "items": {
-              "$ref": "#/components/schemas/CaseworkerActionType"
+              "$ref": "#/components/schemas/ActionType"
             },
             "title": "Allowed Actions",
             "type": "array"

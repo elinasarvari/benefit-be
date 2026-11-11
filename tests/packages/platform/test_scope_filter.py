@@ -77,8 +77,8 @@ def test_FR_000_19_system_scope_is_limited_to_its_case_and_to_case_collections()
 
 def test_FR_000_19_registry_covers_every_collection_the_migrations_create() -> None:
     baseline = importlib.import_module("db.migrations.versions.0001_baseline")
-    case_lifecycle = importlib.import_module("db.migrations.versions.0002_case_lifecycle")
-    case_screens = importlib.import_module("db.migrations.versions.0003_case_screens")
+    case_lifecycle = importlib.import_module("db.migrations.versions.0003_case_lifecycle")
+    case_screens = importlib.import_module("db.migrations.versions.0004_case_screens")
     created = (
         set(baseline.SCOPED_WITH_CASE)
         | set(baseline.SCOPED_HOUSEHOLD_ONLY)

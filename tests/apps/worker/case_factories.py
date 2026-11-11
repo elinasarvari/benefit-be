@@ -6,8 +6,10 @@ import uuid
 from datetime import UTC, date, datetime, timedelta
 from typing import Any
 
+from packages.domain.auth import Role
 from packages.domain.case import (
     ActionOutcome,
+    ActionType,
     CaseChange,
     CaseClock,
     CaseEvent,
@@ -17,17 +19,16 @@ from packages.domain.case import (
     CaseState,
     CaseUpdate,
     CaseworkerAction,
-    CaseworkerActionType,
     CoveragePeriod,
     CoverageStatus,
     EventActorType,
     NoticeRequest,
     NoticeType,
-    ReviewEvidence,
     ReviewReason,
     ReviewTask,
     ReviewTaskStatus,
 )
+from packages.domain.review import EvidenceRef, ReviewCause
 
 T0 = datetime(2026, 3, 17, 17, 0, tzinfo=UTC)
 RECEIVED_ON = date(2026, 3, 17)
@@ -106,20 +107,23 @@ def review_task(
     case_id: uuid.UUID, household_id: uuid.UUID, task_id: uuid.UUID, status: ReviewTaskStatus
 ) -> ReviewTask:
     return ReviewTask(
-        id=task_id,
-        case_id=case_id,
+        task_id=task_id,
         household_id=household_id,
+        case_id=case_id,
+        workflow_id=f"case-{case_id}",
         reason=ReviewReason.adverse_determination,
-        evidence=ReviewEvidence(
-            determination_id=DETERMINATION_ID, failed_rules=["income_over_limit"]
-        ),
-        allowed_actions=[
-            CaseworkerActionType.approve_denial,
-            CaseworkerActionType.override_to_approve,
-        ],
+        cause=ReviewCause.ineligible,
+        evidence_refs=[EvidenceRef(kind="determination_id", id=DETERMINATION_ID)],
+        blocking=True,
         status=status,
-        opened_case_time=T0,
-        opened_real_time=T0,
+        opened_at_case=T0,
+        opened_at_real=T0,
+        decision_deadline=date(2026, 5, 1),
+        closed_by_action_id=(
+            uuid.uuid5(case_id, "request-1") if status is ReviewTaskStatus.closed else None
+        ),
+        created_at=T0,
+        updated_at=T0,
     )
 
 
@@ -149,20 +153,20 @@ def approved(
         override = CaseOverride(
             reviewer_id=REVIEWER, reason=override_reason, determination_id=DETERMINATION_ID
         )
-        parts["review_task"] = review_task(
-            case_id, household_id, task_id, ReviewTaskStatus.resolved
-        )
+        parts["review_task"] = review_task(case_id, household_id, task_id, ReviewTaskStatus.closed)
         parts["action"] = CaseworkerAction(
-            id=uuid.uuid5(case_id, "request-1"),
-            case_id=case_id,
-            household_id=household_id,
+            action_id=uuid.uuid5(case_id, "request-1"),
             task_id=task_id,
-            action=CaseworkerActionType.override_to_approve,
+            action=ActionType.override_to_approve,
             reviewer_id=REVIEWER,
+            reviewer_role=Role.caseworker,
             reason=override_reason,
+            submitted_at=ev.real_time,
+            household_id=household_id,
+            case_id=case_id,
             outcome=ActionOutcome.applied,
-            case_time=ev.case_time,
-            real_time=ev.real_time,
+            applied_at_case=ev.case_time,
+            recorded_at=ev.real_time,
         )
     return CaseChange(
         case_id=case_id,

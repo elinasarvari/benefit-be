@@ -14,7 +14,7 @@ from apps.worker.workflows.case_states import (
     decision_deadline,
     denial_reason_for,
 )
-from packages.domain.case import CaseState, CaseworkerActionType, DenialReason, ReviewReason
+from packages.domain.case import ActionType, CaseState, DenialReason, ReviewReason
 
 S = CaseState
 ALLOWED_IN_001 = {
@@ -98,7 +98,7 @@ def test_FR_001_18_deadline_minus_receipt_is_always_45_days_property(received_on
 
 
 def test_FR_001_07_allowed_actions_for_001_review_reasons() -> None:
-    both = [CaseworkerActionType.approve_denial, CaseworkerActionType.override_to_approve]
+    both = [ActionType.approve_denial, ActionType.override_to_approve]
 
     assert allowed_actions_for(ReviewReason.adverse_determination) == both
     assert allowed_actions_for(ReviewReason.cannot_determine) == both

@@ -26,7 +26,7 @@ PROJECTION = {"_id": 1, "case_id": 1, "household_id": 1}
 
 
 def case_document(case_id: uuid.UUID, household_id: uuid.UUID) -> dict[str, object]:
-    """A case that passes the 0002_case_lifecycle validator."""
+    """A case that passes the 0003_case_lifecycle validator."""
     now = datetime(2026, 3, 17, 15, tzinfo=UTC)
     return {
         "_id": case_id,

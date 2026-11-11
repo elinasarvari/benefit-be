@@ -9,7 +9,7 @@ from typing import Any
 from temporalio.worker import Worker
 
 from apps.worker.workflows.case import CaseWorkflow
-from packages.domain.case import CaseChange, CaseOutcome, CaseState, CaseworkerActionType
+from packages.domain.case import ActionType, CaseChange, CaseOutcome, CaseState
 from tests.apps.worker.workflows.case_harness import (
     ELIGIBLE,
     INELIGIBLE,
@@ -69,7 +69,7 @@ async def test_FR_001_03_restart_while_waiting_on_task_no_second_task() -> None:
             assert resumed.open_review_task is not None
             await signal(
                 handle,
-                action(resumed.open_review_task.task_id, CaseworkerActionType.approve_denial),
+                action(resumed.open_review_task.task_id, ActionType.approve_denial),
             )
             final = await asyncio.wait_for(handle.result(), timeout=30)
 
@@ -117,12 +117,12 @@ async def test_FR_001_03_restart_while_review_write_in_flight_resumes_under_revi
                 release_write.set()
                 await signal(
                     handle,
-                    action(resumed.open_review_task.task_id, CaseworkerActionType.approve_denial),
+                    action(resumed.open_review_task.task_id, ActionType.approve_denial),
                 )
                 final = await asyncio.wait_for(handle.result(), timeout=30)
 
     review = next(c.review_task for c in stubs.changes if c.review_task is not None)
-    assert resumed.open_review_task.task_id == review.id
+    assert resumed.open_review_task.task_id == review.task_id
     assert final.outcome is CaseOutcome.denied
     assert seqs(stubs) == [1, 2, 3, 4]
 

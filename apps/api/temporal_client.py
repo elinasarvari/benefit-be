@@ -24,7 +24,8 @@ from temporalio.converter import PayloadConverter
 from temporalio.exceptions import WorkflowAlreadyStartedError
 from temporalio.service import RPCError, RPCStatusCode
 
-from packages.domain.case import AllowedActions, CaseStart, CaseworkerActionRequest, workflow_id_for
+from packages.domain.case import AllowedActions, CaseStart, workflow_id_for
+from packages.domain.review import CaseworkerActionSignal
 from packages.platform.errors import DependencyUnavailable, NotFound
 from packages.platform.logging import REQUEST_ID_HEADER
 from packages.platform.settings import Settings
@@ -112,7 +113,7 @@ class TemporalCaseWorkflows:
             raise _unavailable(error) from error
 
     async def signal_action(
-        self, case_id: UUID, request: CaseworkerActionRequest, *, best_effort: bool = False
+        self, case_id: UUID, request: CaseworkerActionSignal, *, best_effort: bool = False
     ) -> bool:
         """True when delivered. With `best_effort`, a failed delivery (a completed workflow,
         say) returns False so the caller can record the refusal itself (ADR-001-04)."""

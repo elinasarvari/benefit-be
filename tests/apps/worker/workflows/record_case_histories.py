@@ -7,7 +7,7 @@ command order changes on purpose; keep the old files as a separate replay test (
 import asyncio
 from pathlib import Path
 
-from packages.domain.case import CaseState, CaseworkerActionType
+from packages.domain.case import ActionType, CaseState
 from tests.apps.worker.workflows.case_harness import (
     ELIGIBLE,
     INELIGIBLE,
@@ -35,7 +35,7 @@ async def record(name: str, override: bool) -> None:
                 handle,
                 action(
                     waiting.open_review_task.task_id,
-                    CaseworkerActionType.override_to_approve,
+                    ActionType.override_to_approve,
                     reason=SYNTH_REASON,
                 ),
             )

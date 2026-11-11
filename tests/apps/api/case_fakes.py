@@ -24,7 +24,7 @@ from packages.domain.case import (
     CaseStart,
     CaseState,
     CaseworkerAction,
-    CaseworkerActionRequest,
+    CaseworkerActionSignal,
     CoveragePeriod,
     OpenReviewTask,
     StoredApplication,
@@ -164,9 +164,9 @@ class FakeCaseRepository:
     ) -> None:
         if not _visible(scope, action.household_id):
             raise Forbidden()
-        if action.id in self.actions:
+        if action.action_id in self.actions:
             return  # a retried request: already recorded
-        self.actions[action.id] = action
+        self.actions[action.action_id] = action
         await audit.write(entry)
 
 
@@ -186,7 +186,7 @@ class FakeCaseWorkflows:
         self.start_calls = 0
         self.fail_next_start = False
         self.allowed = AllowedActions()
-        self.signals: list[tuple[UUID, CaseworkerActionRequest]] = []
+        self.signals: list[tuple[UUID, CaseworkerActionSignal]] = []
         self.completed = False  # a completed (decided) workflow can't take signals
 
     async def start(self, start: CaseStart) -> None:
@@ -202,7 +202,7 @@ class FakeCaseWorkflows:
         return self.allowed
 
     async def signal_action(
-        self, case_id: UUID, request: CaseworkerActionRequest, *, best_effort: bool = False
+        self, case_id: UUID, request: CaseworkerActionSignal, *, best_effort: bool = False
     ) -> bool:
         if self.completed:
             if best_effort:

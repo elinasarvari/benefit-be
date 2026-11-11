@@ -19,7 +19,8 @@ from pymongo.asynchronous.client_session import AsyncClientSession
 from pymongo.errors import DuplicateKeyError
 
 from packages.domain.audit import ActorType, AuditAction, AuditLogEntry, AuditOutcome
-from packages.domain.case import ActionOutcome, CaseChange
+from packages.domain.case import CaseChange
+from packages.domain.review import ActionOutcome, CaseworkerAction, ReviewTask
 from packages.platform.audit import AuditWriter
 from packages.platform.errors import Forbidden
 from packages.platform.mongo import Client
@@ -34,7 +35,7 @@ OUTBOX = "outbox"
 
 
 def to_bson(value: Any) -> Any:
-    """Enums as their values, calendar dates as midnight-UTC BSON dates (0002 migration)."""
+    """Enums as their values, calendar dates as midnight-UTC BSON dates (0003 migration)."""
     if isinstance(value, BaseModel):
         return to_bson(value.model_dump(by_alias=True))
     if isinstance(value, dict):
@@ -46,6 +47,18 @@ def to_bson(value: Any) -> Any:
     if isinstance(value, date) and not isinstance(value, datetime):
         return datetime.combine(value, time(0), tzinfo=UTC)
     return value
+
+
+def review_task_document(task: ReviewTask) -> dict[str, Any]:
+    """010's stored shape: `_id` is the task ID (as `ReviewTaskRepository.upsert` writes it)."""
+    document: dict[str, Any] = to_bson(task.model_dump(exclude={"task_id"}))
+    return {"_id": task.task_id, **document}
+
+
+def action_document(action: CaseworkerAction) -> dict[str, Any]:
+    """010's stored shape: `_id` is the action ID (as `CaseworkerActionRepository` writes it)."""
+    document: dict[str, Any] = to_bson(action.model_dump())
+    return {"_id": action.action_id, **document}
 
 
 def _check_owned(scope: Scope, collection: str, document: dict[str, Any]) -> None:
@@ -60,9 +73,10 @@ def audit_entry_for(change: CaseChange) -> AuditLogEntry | None:
     if action is None:
         return None
     return AuditLogEntry(
-        occurred_at=action.real_time,
+        occurred_at=action.recorded_at,
         actor_type=ActorType.user,
         actor_id=str(action.reviewer_id),
+        actor_role=action.reviewer_role,
         action=AuditAction.caseworker_action,
         target_type="case",
         target_id=str(change.case_id),
@@ -71,7 +85,7 @@ def audit_entry_for(change: CaseChange) -> AuditLogEntry | None:
             if action.outcome is ActionOutcome.applied
             else AuditOutcome.refused
         ),
-        reference_id=str(action.id),
+        reference_id=str(action.action_id),
     )
 
 
@@ -137,13 +151,15 @@ class CaseRepository:
         self, change: CaseChange, scope: Scope, session: AsyncClientSession
     ) -> None:
         if change.review_task is not None:
-            await self._upsert(REVIEW_TASKS, to_bson(change.review_task), scope, session)
+            await self._upsert(
+                REVIEW_TASKS, review_task_document(change.review_task), scope, session
+            )
 
     async def _write_action(
         self, change: CaseChange, scope: Scope, session: AsyncClientSession
     ) -> None:
         if change.action is not None:
-            await self._upsert(CASEWORKER_ACTIONS, to_bson(change.action), scope, session)
+            await self._upsert(CASEWORKER_ACTIONS, action_document(change.action), scope, session)
 
     async def _write_coverage(
         self, change: CaseChange, scope: Scope, session: AsyncClientSession

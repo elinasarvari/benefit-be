@@ -2,7 +2,9 @@
 
 submitted -> verifying -> determining -> decided (approved), or -> under_review, where it waits on
 the `caseworker_action` signal (TW-4, TW-5; ADR-001-04 fallback) until `approve_denial` decides it
-denied or `override_to_approve` decides it approved. Every change becomes one `CaseChange` with the
+denied or `override_to_approve` decides it approved. The review task and the caseworker actions
+are 010's shapes (`packages/domain/review.py`, ADR-001-11) and the signal payload is 010's
+`CaseworkerActionSignal`. Every change becomes one `CaseChange` with the
 next `seq`, written by `record_case_change` in one transaction. Times come only from
 `workflow.now()` through the case clock (TW-1, ADR-001-03).
 
@@ -36,8 +38,8 @@ with workflow.unsafe.imports_passed_through():
         decision_deadline,
         denial_reason_for,
     )
+    from apps.worker.workflows.review import DETERMINATION_REF_KIND
     from packages.domain.case import (
-        ActionOutcome,
         AllowedActions,
         CaseChange,
         CaseEvent,
@@ -48,9 +50,6 @@ with workflow.unsafe.imports_passed_through():
         CaseState,
         CaseStatus,
         CaseUpdate,
-        CaseworkerAction,
-        CaseworkerActionRequest,
-        CaseworkerActionType,
         CoveragePeriod,
         CoverageStatus,
         DenialReason,
@@ -61,38 +60,37 @@ with workflow.unsafe.imports_passed_through():
         NoticeRequest,
         NoticeType,
         OpenReviewTask,
-        ReviewEvidence,
-        ReviewReason,
-        ReviewResolution,
-        ReviewTask,
-        ReviewTaskStatus,
         VerificationOutcome,
         VerificationRequest,
     )
+    from packages.domain.review import (
+        BLOCKING,
+        REASON_REQUIRED,
+        ActionOutcome,
+        ActionType,
+        CaseworkerAction,
+        CaseworkerActionSignal,
+        EvidenceRef,
+        RejectionCode,
+        ReviewCause,
+        ReviewReason,
+        ReviewTask,
+        ReviewTaskStatus,
+    )
 
-# Reason codes of events that are not a caseworker action value (enum-backed, FR-001-10).
+# Reason codes of events that are not a caseworker action value (enum-backed, FR-001-10). A
+# rejected action's event carries its `RejectionCode` value.
 WORKFLOW_STARTED = "workflow_started"
 VERIFICATION_COMPLETE = "verification_complete"
-ACTION_NOT_ALLOWED = "action_not_allowed"
-REASON_REQUIRED = "reason_required"
-NO_OPEN_TASK = "no_open_task"
 
 
-def parse_action(raw: dict[str, Any]) -> tuple[CaseworkerActionRequest | None, str | None]:
-    """Decode the signal payload. An override without a reason is kept, so it can be rejected
-    and recorded (FR-001-20) rather than dropped; any other malformed payload is dropped."""
+def parse_action(raw: dict[str, Any]) -> CaseworkerActionSignal | None:
+    """Decode the signal payload; a malformed one is dropped. An action without the reason it
+    needs still decodes, so it is rejected and recorded (FR-001-20, FR-010-05)."""
     try:
-        return CaseworkerActionRequest.model_validate(raw), None
+        return CaseworkerActionSignal.model_validate(raw)
     except ValidationError:
-        pass
-    try:
-        checked = CaseworkerActionRequest.model_validate(
-            {**raw, "action": CaseworkerActionType.approve_denial}
-        )
-        action = CaseworkerActionType(str(raw.get("action")))
-    except (ValidationError, ValueError):
-        return None, None
-    return checked.model_copy(update={"action": action, "reason": None}), REASON_REQUIRED
+        return None
 
 
 @workflow.defn(name="CaseWorkflow")
@@ -108,8 +106,8 @@ class CaseWorkflow:
         self._denial_reason: DenialReason | None = None
         self._determination: Determination | None = None
         self._task: ReviewTask | None = None
-        self._pending: list[tuple[CaseworkerActionRequest, str | None]] = []
-        self._seen_requests: set[UUID] = set()
+        self._pending: list[CaseworkerActionSignal] = []
+        self._seen_actions: set[UUID] = set()
 
     # --- Run ---------------------------------------------------------------------------------
 
@@ -160,14 +158,14 @@ class CaseWorkflow:
     @workflow.signal(name="caseworker_action")
     def caseworker_action(self, payload: RawValue) -> None:
         raw = workflow.payload_converter().from_payload(payload.payload, dict)
-        request, problem = parse_action(raw)
+        request = parse_action(raw)
         if request is None:
             workflow.logger.warning("caseworker_action.malformed")
             return
-        if request.request_id in self._seen_requests:
-            return  # duplicate delivery (R10, FR-001-04)
-        self._seen_requests.add(request.request_id)
-        self._pending.append((request, problem))
+        if request.action_id in self._seen_actions:
+            return  # duplicate delivery (R10, FR-001-04, FR-010-06)
+        self._seen_actions.add(request.action_id)
+        self._pending.append(request)
 
     @workflow.query(name="status")
     def status(self) -> CaseStatus:
@@ -178,7 +176,7 @@ class CaseWorkflow:
         task = self._open_task()
         if task is None:
             return AllowedActions()
-        return AllowedActions(task_id=task.id, actions=list(task.allowed_actions))
+        return AllowedActions(task_id=task.task_id, actions=allowed_actions_for(task.reason))
 
     # --- Steps -------------------------------------------------------------------------------
 
@@ -207,7 +205,9 @@ class CaseWorkflow:
             denial_reason=self._denial_reason,
             open_review_task=(
                 OpenReviewTask(
-                    task_id=task.id, reason=task.reason, allowed_actions=task.allowed_actions
+                    task_id=task.task_id,
+                    reason=task.reason,
+                    allowed_actions=allowed_actions_for(task.reason),
                 )
                 if task is not None
                 else None
@@ -268,11 +268,10 @@ class CaseWorkflow:
         await self._record(event, case_update=CaseUpdate(state=to_state))
 
     async def _open_review(self, determination: Determination) -> None:
-        reason = (
-            ReviewReason.adverse_determination
-            if determination.outcome is DeterminationOutcome.ineligible
-            else ReviewReason.cannot_determine
-        )
+        if determination.outcome is DeterminationOutcome.ineligible:
+            reason, cause = ReviewReason.adverse_determination, ReviewCause.ineligible
+        else:
+            reason, cause = ReviewReason.cannot_determine, ReviewCause.cannot_determine
         task_id = workflow.uuid4()
         event = self._event(
             CaseEventKind.state_changed,
@@ -280,83 +279,87 @@ class CaseWorkflow:
             to_state=CaseState.under_review,
             review_task_id=task_id,
         )
+        # 010's shape (ADR-001-11): evidence by reference only (010 R3); the failed rules and
+        # missing items stay on the determination, which the workflow keeps.
         task = ReviewTask(
-            id=task_id,
-            case_id=self._start.case_id,
+            task_id=task_id,
             household_id=self._start.household_id,
+            case_id=self._start.case_id,
+            workflow_id=workflow.info().workflow_id,
             reason=reason,
-            evidence=ReviewEvidence(
-                determination_id=determination.determination_id,
-                missing_items=list(determination.missing_items),
-                failed_rules=[rule.value for rule in determination.failed_rules]
-                or ([determination.reason_code.value] if determination.reason_code else []),
-            ),
-            allowed_actions=allowed_actions_for(reason),
+            cause=cause,
+            evidence_refs=[
+                EvidenceRef(kind=DETERMINATION_REF_KIND, id=determination.determination_id)
+            ],
+            blocking=reason in BLOCKING,
             status=ReviewTaskStatus.open,
-            opened_case_time=event.case_time,
-            opened_real_time=event.real_time,
+            opened_at_case=event.case_time,
+            opened_at_real=event.real_time,
+            decision_deadline=self._deadline,
+            created_at=event.real_time,
+            updated_at=event.real_time,
         )
         self._task = task
         await self._record(
             event, case_update=CaseUpdate(state=CaseState.under_review), review_task=task
         )
 
-    def _rejection(self, request: CaseworkerActionRequest, problem: str | None) -> str | None:
+    def _rejection(self, request: CaseworkerActionSignal) -> RejectionCode | None:
         task = self._open_task()
         if task is None or self._state is not CaseState.under_review:
-            return NO_OPEN_TASK
-        if request.task_id != task.id or request.action not in task.allowed_actions:
-            return ACTION_NOT_ALLOWED
-        return problem
+            return RejectionCode.task_closed
+        if request.task_id != task.task_id or request.action not in allowed_actions_for(
+            task.reason
+        ):
+            return RejectionCode.not_allowed_for_reason
+        if request.action in REASON_REQUIRED and not (request.reason and request.reason.strip()):
+            return RejectionCode.reason_required
+        return None
 
     async def _apply_next(self) -> None:
-        request, problem = self._pending.pop(0)
-        rejection = self._rejection(request, problem)
+        request = self._pending.pop(0)
+        rejection = self._rejection(request)
         if rejection is not None:
             await self._reject(request, rejection)
-        elif request.action is CaseworkerActionType.approve_denial:
+        elif request.action is ActionType.approve_denial:
             await self._decide_denied(request)
         else:
             await self._decide_approved(reason_code=request.action.value, request=request)
 
     def _action_record(
-        self, request: CaseworkerActionRequest, event: CaseEvent, outcome: ActionOutcome
+        self,
+        request: CaseworkerActionSignal,
+        event: CaseEvent,
+        rejection: RejectionCode | None = None,
     ) -> CaseworkerAction:
         return CaseworkerAction(
-            id=request.request_id,
-            case_id=self._start.case_id,
+            **request.model_dump(),
             household_id=self._start.household_id,
-            task_id=request.task_id,
-            action=request.action,
-            reviewer_id=request.reviewer_id,
-            reason=request.reason,
-            outcome=outcome,
-            case_time=event.case_time,
-            real_time=event.real_time,
+            case_id=self._start.case_id,
+            outcome=ActionOutcome.applied if rejection is None else ActionOutcome.rejected,
+            rejection_code=rejection,
+            applied_at_case=event.case_time if rejection is None else None,
+            recorded_at=event.real_time,
         )
 
-    async def _reject(self, request: CaseworkerActionRequest, reason_code: str) -> None:
+    async def _reject(self, request: CaseworkerActionSignal, rejection: RejectionCode) -> None:
         task = self._open_task()
         event = self._event(
             CaseEventKind.action_rejected,
-            reason_code,
+            rejection.value,
             actor_id=request.reviewer_id,
-            review_task_id=task.id if task is not None else None,
+            review_task_id=task.task_id if task is not None else None,
         )
-        action = self._action_record(request, event, ActionOutcome.rejected)
+        action = self._action_record(request, event, rejection)
         await self._record(event, action=action)
 
-    def _resolved_task(self, request: CaseworkerActionRequest, case_time: datetime) -> ReviewTask:
+    def _closed_task(self, request: CaseworkerActionSignal, real_time: datetime) -> ReviewTask:
         task = self._required_task()
         return task.model_copy(
             update={
-                "status": ReviewTaskStatus.resolved,
-                "resolution": ReviewResolution(
-                    action=request.action,
-                    reviewer_id=request.reviewer_id,
-                    reason=request.reason,
-                    case_time=case_time,
-                ),
+                "status": ReviewTaskStatus.closed,
+                "closed_by_action_id": request.action_id,
+                "updated_at": real_time,
             }
         )
 
@@ -370,14 +373,14 @@ class CaseWorkflow:
         )
 
     async def _decide_approved(
-        self, *, reason_code: str, request: CaseworkerActionRequest | None = None
+        self, *, reason_code: str, request: CaseworkerActionSignal | None = None
     ) -> None:
         event = self._event(
             CaseEventKind.state_changed,
             reason_code,
             to_state=CaseState.decided,
             actor_id=request.reviewer_id if request is not None else None,
-            review_task_id=self._task.id if request is not None and self._task else None,
+            review_task_id=self._task.task_id if request is not None and self._task else None,
         )
         start, end = coverage_for(self._received_on)
         override = None
@@ -390,8 +393,8 @@ class CaseWorkflow:
                     self._determination.determination_id if self._determination else None
                 ),
             )
-            parts["review_task"] = self._resolved_task(request, event.case_time)
-            parts["action"] = self._action_record(request, event, ActionOutcome.applied)
+            parts["review_task"] = self._closed_task(request, event.real_time)
+            parts["action"] = self._action_record(request, event)
         self._outcome = CaseOutcome.approved
         if "review_task" in parts:
             self._task = parts["review_task"]
@@ -416,17 +419,23 @@ class CaseWorkflow:
             **parts,
         )
 
-    async def _decide_denied(self, request: CaseworkerActionRequest) -> None:
+    async def _decide_denied(self, request: CaseworkerActionSignal) -> None:
         task = self._required_task()
-        denial_reason = denial_reason_for(task.reason, task.evidence.failed_rules)
+        determination = self._determination
+        failed_rules: list[str] = []
+        if determination is not None:
+            failed_rules = [rule.value for rule in determination.failed_rules] or (
+                [determination.reason_code.value] if determination.reason_code else []
+            )
+        denial_reason = denial_reason_for(task.reason, failed_rules)
         event = self._event(
             CaseEventKind.state_changed,
             request.action.value,
             to_state=CaseState.decided,
             actor_id=request.reviewer_id,
-            review_task_id=task.id,
+            review_task_id=task.task_id,
         )
-        resolved = self._resolved_task(request, event.case_time)
+        resolved = self._closed_task(request, event.real_time)
         self._outcome = CaseOutcome.denied
         self._denial_reason = denial_reason
         self._task = resolved
@@ -440,6 +449,6 @@ class CaseWorkflow:
                 decided_on=chicago_date(event.case_time),
             ),
             review_task=resolved,
-            action=self._action_record(request, event, ActionOutcome.applied),
+            action=self._action_record(request, event),
             notice=self._notice(NoticeType.denial, event.case_time),
         )

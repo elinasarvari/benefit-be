@@ -16,7 +16,7 @@ from packages.domain.smoke import SmokeInput
 
 WORKER = Path(__file__).parents[3] / "apps" / "worker"
 CALLS = {"execute_activity", "execute_local_activity", "start_activity", "start_local_activity"}
-PRESETS = {"DEFAULT", "AGENT_STEP", "UNTIL_DONE"}
+PRESETS = {"DEFAULT", "AGENT_STEP", "RULES_STEP", "UNTIL_DONE"}
 
 
 def uses_preset(call: ast.Call) -> bool:
@@ -43,6 +43,14 @@ def test_FR_000_13_every_activity_call_uses_policy_preset() -> None:
                 offenders.append(f"{path.relative_to(WORKER)}:{node.lineno}")
 
     assert offenders == [], f"activity calls without a policies.py preset: {offenders}"
+
+
+def test_FR_010_03_rules_step_allows_3_attempts() -> None:
+    from apps.worker.policies import NON_RETRYABLE_ERRORS, RULES_STEP
+
+    assert RULES_STEP["retry_policy"].maximum_attempts == 3
+    assert RULES_STEP["retry_policy"].non_retryable_error_types == NON_RETRYABLE_ERRORS
+    assert RULES_STEP["start_to_close_timeout"].total_seconds() > 0
 
 
 @pytest.mark.workflow

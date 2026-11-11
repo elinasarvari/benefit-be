@@ -14,6 +14,17 @@ from uuid import UUID, uuid5
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+# Review tasks and caseworker actions are 010's shapes (packages/domain/review.py, migration
+# 0002_review_queue); 001 uses them as they are and re-exports them here (ADR-001-11).
+from packages.domain.review import ActionOutcome as ActionOutcome
+from packages.domain.review import ActionType as ActionType
+from packages.domain.review import CaseworkerAction as CaseworkerAction
+from packages.domain.review import CaseworkerActionSignal as CaseworkerActionSignal
+from packages.domain.review import RejectionCode as RejectionCode
+from packages.domain.review import ReviewReason as ReviewReason
+from packages.domain.review import ReviewTask as ReviewTask
+from packages.domain.review import ReviewTaskStatus as ReviewTaskStatus
+
 # Namespace for deterministic case IDs (ADR-001-02). Never change it: stored case IDs depend on it.
 SUBMISSION_NS = UUID("6f1c2a54-0b7e-5d3a-9c41-2e8f0d5b7a13")
 
@@ -62,30 +73,6 @@ class DenialReason(StrEnum):
     missing_information = "missing_information"
 
 
-class ReviewReason(StrEnum):
-    adverse_determination = "adverse_determination"
-    cannot_determine = "cannot_determine"
-    notice_approval = "notice_approval"
-    verification_review = "verification_review"
-    missed_response_deadline = "missed_response_deadline"
-    explanation_review = "explanation_review"
-
-
-class CaseworkerActionType(StrEnum):
-    # 001 handles only the first two; the rest are FR-010-01.
-    approve_denial = "approve_denial"
-    override_to_approve = "override_to_approve"
-    request_information = "request_information"
-    correct_value = "correct_value"
-    dismiss_finding = "dismiss_finding"
-    accept_findings = "accept_findings"
-    approve = "approve"
-    edit_and_approve = "edit_and_approve"
-    deny_for_missing_information = "deny_for_missing_information"
-    extend_15_days = "extend_15_days"
-    continue_with_held_data = "continue_with_held_data"
-
-
 class CaseEventKind(StrEnum):
     state_changed = "state_changed"
     review_task_opened = "review_task_opened"
@@ -121,20 +108,31 @@ class EventActorType(StrEnum):
     user = "user"
 
 
-class ReviewTaskStatus(StrEnum):
-    open = "open"
-    resolved = "resolved"
-
-
-class ActionOutcome(StrEnum):
-    applied = "applied"
-    rejected = "rejected"
-
-
 class NoticeType(StrEnum):
     # 001 values; the full enum is FR-011-06.
     approval = "approval"
     denial = "denial"
+
+
+# The actions CaseWorkflow carries out itself until it composes 010's review loop (010 T018): the
+# spec's interim set ("until 010 lands, review tasks offer only Approve denial and Override to
+# approve"). 010's own actions for these reasons need that loop (ADR-001-11). A data table, so the
+# API and the worker offer the same actions.
+CASE_WORKFLOW_ACTIONS: dict[ReviewReason, tuple[ActionType, ...]] = {
+    ReviewReason.adverse_determination: (
+        ActionType.approve_denial,
+        ActionType.override_to_approve,
+    ),
+    ReviewReason.cannot_determine: (
+        ActionType.approve_denial,
+        ActionType.override_to_approve,
+    ),
+}
+
+
+def allowed_actions_for(reason: ReviewReason) -> list[ActionType]:
+    """Caseworker actions 001 accepts on a review task; other reasons belong to 010."""
+    return list(CASE_WORKFLOW_ACTIONS.get(reason, ()))
 
 
 # --- Models ----------------------------------------------------------------------------------
@@ -212,65 +210,6 @@ class CaseEvent(_Document):
     reason_code: str = Field(max_length=64, pattern=r"^[a-z0-9_]+$")
     review_task_id: UUID | None = None
     created_at: datetime
-
-
-class ReviewEvidence(_Model):
-    determination_id: UUID | None = None
-    missing_items: list[str] = Field(default_factory=list)
-    failed_rules: list[str] = Field(default_factory=list)
-
-
-class ReviewResolution(_Model):
-    action: CaseworkerActionType
-    reviewer_id: UUID
-    reason: str | None = Field(default=None, max_length=REASON_MAX_LENGTH)
-    case_time: datetime
-
-
-class ReviewTask(_Document):
-    id: UUID = Field(alias="_id")
-    case_id: UUID
-    household_id: UUID
-    reason: ReviewReason
-    evidence: ReviewEvidence
-    allowed_actions: list[CaseworkerActionType]
-    status: ReviewTaskStatus
-    opened_case_time: datetime
-    opened_real_time: datetime
-    reminder: bool = False
-    escalated: bool = False
-    resolution: ReviewResolution | None = None
-
-
-class CaseworkerActionRequest(_Model):
-    """Signal payload `caseworker_action`. `reason` is never logged (PL-11)."""
-
-    task_id: UUID
-    action: CaseworkerActionType
-    reviewer_id: UUID
-    reason: str | None = Field(default=None, max_length=REASON_MAX_LENGTH, repr=False)
-    request_id: UUID
-
-    @model_validator(mode="after")
-    def _override_needs_reason(self) -> Self:
-        if self.action is CaseworkerActionType.override_to_approve and not (
-            self.reason and self.reason.strip()
-        ):
-            raise ValueError("override_to_approve requires a reason")
-        return self
-
-
-class CaseworkerAction(_Document):
-    id: UUID = Field(alias="_id", description="= request_id (idempotent)")
-    case_id: UUID
-    household_id: UUID
-    task_id: UUID
-    action: CaseworkerActionType
-    reviewer_id: UUID
-    reason: str | None = Field(default=None, max_length=REASON_MAX_LENGTH, repr=False)
-    outcome: ActionOutcome
-    case_time: datetime
-    real_time: datetime
 
 
 class CoveragePeriod(_Document):
@@ -358,7 +297,7 @@ class CaseChange(_Model):
 class OpenReviewTask(_Model):
     task_id: UUID
     reason: ReviewReason
-    allowed_actions: list[CaseworkerActionType]
+    allowed_actions: list[ActionType]
 
 
 class CaseStatus(_Model):
@@ -387,7 +326,7 @@ class AllowedActions(_Model):
     """Query result `allowed_actions`; empty when no task is open."""
 
     task_id: UUID | None = None
-    actions: list[CaseworkerActionType] = Field(default_factory=list)
+    actions: list[ActionType] = Field(default_factory=list)
 
 
 # --- Application form (ADR-001-08, FR-001-24) --------------------------------------------------

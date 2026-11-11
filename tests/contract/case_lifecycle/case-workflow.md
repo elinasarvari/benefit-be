@@ -21,7 +21,7 @@ Reserved for later features (names fixed now): `applicant_response` (011), `adva
 | Name | Result |
 |---|---|
 | `status` | `CaseStatus` (computed with `case_now(workflow.now())`) |
-| `allowed_actions` | `AllowedActions {task_id, actions: list[CaseworkerActionType]}` or empty |
+| `allowed_actions` | `AllowedActions {task_id, actions: list[ActionType]}` or empty |
 
 ## Activities (names are the contract; TW-2, TW-9, TW-10)
 

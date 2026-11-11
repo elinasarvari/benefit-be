@@ -2,7 +2,7 @@
 insert and the `applications` insert.
 
 Every read goes through `packages.platform.scope`, so an applicant only ever sees their own
-household (R16, PL-6). The insert relies on the indexes of migration 0002 (ADR-001-02):
+household (R16, PL-6). The insert relies on the indexes of migration 0003 (ADR-001-02):
 unique `_id` / `submission_reference`, and one open case per household (partial unique index).
 """
 
@@ -24,13 +24,12 @@ from packages.domain.case import (
     Case,
     CaseEvent,
     CaseState,
-    CaseworkerAction,
-    CaseworkerActionType,
     CoveragePeriod,
     OpenReviewTask,
-    ReviewTaskStatus,
     StoredApplication,
+    allowed_actions_for,
 )
+from packages.domain.review import CaseworkerAction, ReviewReason, ReviewTaskStatus
 from packages.platform.audit import AuditWriter
 from packages.platform.errors import Forbidden
 from packages.platform.mongo import Client
@@ -48,7 +47,7 @@ APPLICATIONS = "applications"
 CASE_FIELDS = {name: 1 for name in Case.model_fields if name != "id"} | {"_id": 1}
 EVENT_FIELDS = {name: 1 for name in CaseEvent.model_fields if name != "id"} | {"_id": 1}
 COVERAGE_FIELDS = {name: 1 for name in CoveragePeriod.model_fields if name != "id"} | {"_id": 1}
-TASK_FIELDS = {"_id": 1, "reason": 1, "allowed_actions": 1}
+TASK_FIELDS = {"_id": 1, "reason": 1}
 
 
 class CaseAlreadyExists(Exception):
@@ -63,7 +62,7 @@ CALENDAR_DATES = ("received_on", "decision_deadline", "decided_on")
 
 
 def bson_date(day: date) -> datetime:
-    """Calendar dates are stored as BSON dates at midnight UTC (migration 0002, database.md)."""
+    """Calendar dates are stored as BSON dates at midnight UTC (migration 0003, database.md)."""
     return datetime.combine(day, time(0), tzinfo=UTC)
 
 
@@ -238,27 +237,27 @@ class MongoCaseRepository:
         doc = await find_one(db, REVIEW_TASKS, scope, query, projection=TASK_FIELDS)
         if doc is None:
             return None
+        reason = ReviewReason(doc["reason"])
+        # 010's `review_tasks` stores no action list: the offer comes from the reason (ADR-001-11).
         return OpenReviewTask(
-            task_id=doc["_id"],
-            reason=doc["reason"],
-            allowed_actions=[CaseworkerActionType(a) for a in doc["allowed_actions"]],
+            task_id=doc["_id"], reason=reason, allowed_actions=allowed_actions_for(reason)
         )
 
     async def record_rejected_action(
         self, scope: Scope, action: CaseworkerAction, entry: AuditLogEntry, audit: AuditWriter
     ) -> None:
         """A refusal the workflow couldn't record (ADR-001-04): the action and its audit entry in
-        one transaction. Keyed by request_id, so a retried request writes neither again."""
-        document = to_bson(action.model_dump(by_alias=True))
+        one transaction. Keyed by `action_id` (the body's request_id), so a retried request writes
+        neither again."""
+        document = to_bson(action.model_dump())
         limit = scoped_filter(scope, CASEWORKER_ACTIONS)
         if any(document.get(key) != expected for key, expected in limit.items()):
             raise Forbidden()
-        document.pop("_id")  # set by the upsert from the filter
         db = self._client[self._db_name]
 
         async def write(session: AsyncClientSession) -> None:
             result = await db[CASEWORKER_ACTIONS].update_one(
-                scoped_filter(scope, CASEWORKER_ACTIONS, {"_id": action.id}),
+                scoped_filter(scope, CASEWORKER_ACTIONS, {"_id": action.action_id}),
                 {"$setOnInsert": document},
                 upsert=True,
                 session=session,

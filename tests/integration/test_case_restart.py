@@ -111,7 +111,7 @@ async def test_FR_001_03_journey_worker_restart_no_duplicate_effects(
         "decided",
     ]
     assert [(t["_id"], t["status"]) for t in after["review_tasks"]] == [
-        (uuid.UUID(task_id), "resolved")
+        (uuid.UUID(task_id), "closed")
     ]
     assert len(after["caseworker_actions"]) == 1
     assert [(n["notice_type"], n["status"]) for n in after["outbox"]] == [("denial", "requested")]

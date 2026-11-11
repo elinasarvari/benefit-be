@@ -14,11 +14,11 @@ from apps.worker.workflows.case import CaseWorkflow
 from apps.worker.workflows.case_states import coverage_for
 from packages.domain.case import (
     ActionOutcome,
+    ActionType,
     CaseChange,
     CaseEventKind,
     CaseOutcome,
     CaseState,
-    CaseworkerActionType,
     DenialReason,
     DeterminationOutcome,
     EventActorType,
@@ -26,6 +26,7 @@ from packages.domain.case import (
     ReviewReason,
     ReviewTaskStatus,
 )
+from packages.domain.review import RejectionCode, ReviewCause
 from tests.apps.worker.workflows.case_harness import (
     CANNOT_DETERMINE,
     DETERMINATION_ID,
@@ -46,7 +47,7 @@ from tests.apps.worker.workflows.case_harness import (
     worker,
 )
 
-A = CaseworkerActionType
+A = ActionType
 
 
 def deciding(stubs: Stubs) -> CaseChange:
@@ -87,7 +88,7 @@ async def test_FR_001_09_ineligible_waits_for_approve_denial() -> None:
     change = deciding(stubs)
     assert change.notice is not None and change.notice.notice_type is NoticeType.denial
     assert change.review_task is not None
-    assert change.review_task.status is ReviewTaskStatus.resolved
+    assert change.review_task.status is ReviewTaskStatus.closed
     assert change.event.actor_type is EventActorType.user and change.event.actor_id == REVIEWER
     assert change.coverage is None
 
@@ -107,7 +108,9 @@ async def test_FR_001_16_cannot_determine_opens_task_never_decides() -> None:
     assert waiting.open_review_task.reason is ReviewReason.cannot_determine
     [opening] = [c for c in stubs.changes if c.review_task is not None]
     assert opening.review_task is not None
-    assert opening.review_task.evidence.missing_items == ["pay_stub"]
+    # 010's shape (ADR-001-11): the task points at the determination that lists what is missing.
+    assert opening.review_task.cause is ReviewCause.cannot_determine
+    assert [ref.kind for ref in opening.review_task.evidence_refs] == ["determination_id"]
     assert not any(c.event.to_state is CaseState.decided for c in stubs.changes)
 
 
@@ -250,7 +253,9 @@ async def test_FR_001_02_disallowed_action_recorded_rejected() -> None:
     rejected = [c for c in stubs.changes if c.event.kind is CaseEventKind.action_rejected]
     assert len(rejected) == 1
     assert stubs.changes.index(rejected[0]) > decided_at  # refused after the decision
-    assert rejected[0].event.reason_code == "no_open_task"
+    assert rejected[0].event.reason_code == "task_closed"
+    assert rejected[0].action is not None
+    assert rejected[0].action.rejection_code is RejectionCode.task_closed
     assert rejected[0].event.actor_id == REVIEWER
     assert rejected[0].action is not None
     assert rejected[0].action.action is A.request_information
@@ -275,7 +280,7 @@ async def test_FR_001_02_disallowed_action_on_open_task_recorded_rejected() -> N
 
     rejected = [c for c in stubs.changes if c.event.kind is CaseEventKind.action_rejected]
     assert len(rejected) == 1
-    assert rejected[0].event.reason_code == "action_not_allowed"
+    assert rejected[0].event.reason_code == "not_allowed_for_reason"
     assert rejected[0].action is not None
     assert rejected[0].action.outcome is ActionOutcome.rejected
     assert rejected[0].case_update is None  # the case did not move
@@ -318,7 +323,7 @@ async def test_FR_001_04_duplicate_request_id_ignored() -> None:
         await signal(handle, action(task_id, A.approve_denial))
         await handle.result()
 
-    actions = [c.action.id for c in stubs.changes if c.action is not None]
+    actions = [c.action.action_id for c in stubs.changes if c.action is not None]
     assert actions.count(request_id) == 1
     assert len(stubs.changes) == 5  # verifying, determining, under_review, rejected, decided
 
@@ -360,7 +365,7 @@ async def test_FR_001_16_income_and_other_rule_fail_denies_income_over_limit() -
 
     assert final.denial_reason is DenialReason.income_over_limit
     opened = [c.review_task for c in stubs.changes if c.review_task is not None]
-    assert opened[0].evidence.failed_rules == ["other_rule_not_met", "income_over_limit"]
+    assert opened[0] is not None and opened[0].cause is ReviewCause.ineligible
     change = deciding(stubs)
     assert change.case_update is not None
     assert change.case_update.denial_reason is DenialReason.income_over_limit
@@ -449,7 +454,7 @@ async def test_FR_001_02_happy_path_visits_submitted_verifying_determining_decid
     [(ELIGIBLE, None), (INELIGIBLE, A.approve_denial), (CANNOT_DETERMINE, A.override_to_approve)],
 )
 async def test_FR_001_10_every_state_change_recorded_with_actor_and_reason(
-    result: object, final_action: CaseworkerActionType | None
+    result: object, final_action: ActionType | None
 ) -> None:
     stubs = Stubs(result=result)  # type: ignore[arg-type]
     async with environment() as env, worker(env.client, stubs):

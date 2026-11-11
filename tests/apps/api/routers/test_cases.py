@@ -13,6 +13,7 @@ from packages.domain.audit import AuditAction, AuditOutcome
 from packages.domain.auth import Role
 from packages.domain.case import (
     ActionOutcome,
+    ActionType,
     AllowedActions,
     Case,
     CaseClock,
@@ -20,11 +21,11 @@ from packages.domain.case import (
     CaseEventKind,
     CaseState,
     CaseType,
-    CaseworkerActionType,
     EventActorType,
     OpenReviewTask,
     ReviewReason,
 )
+from packages.domain.review import RejectionCode
 from packages.platform.clock import case_today
 from packages.platform.logging import configure_logging
 from packages.platform.settings import Settings
@@ -32,7 +33,7 @@ from tests.apps.api.case_fakes import FIXED_NOW, CaseApiHarness
 from tests.apps.api.fakes import HOUSEHOLD
 
 TASK = UUID("00000000-0000-4000-8000-0000000000e1")
-BOTH = [CaseworkerActionType.approve_denial, CaseworkerActionType.override_to_approve]
+BOTH = [ActionType.approve_denial, ActionType.override_to_approve]
 SYNTH_REASON = "SYNTH-REASON-123"
 
 
@@ -114,7 +115,7 @@ def test_FR_001_20_override_without_reason_returns_422(
     [
         AllowedActions(),  # no open task
         AllowedActions(task_id=uuid.uuid4(), actions=BOTH),  # another task is open
-        AllowedActions(task_id=TASK, actions=[CaseworkerActionType.override_to_approve]),
+        AllowedActions(task_id=TASK, actions=[ActionType.override_to_approve]),
     ],
 )
 def test_FR_001_07_action_not_allowed_returns_409(
@@ -146,13 +147,15 @@ def test_FR_001_02_action_on_decided_case_recorded_rejected_by_api(
 
     assert (first.status_code, retried.status_code) == (409, 409)
     [recorded] = harness.repo.actions.values()
-    assert str(recorded.id) == body["request_id"]
+    assert str(recorded.action_id) == body["request_id"]
     assert (recorded.case_id, recorded.household_id) == (case.case_id, case.household_id)
     assert recorded.task_id == TASK
-    assert recorded.action is CaseworkerActionType.override_to_approve
+    assert recorded.action is ActionType.override_to_approve
     assert recorded.reviewer_id == user.id
     assert recorded.outcome is ActionOutcome.rejected
-    assert recorded.real_time == FIXED_NOW
+    assert recorded.rejection_code is RejectionCode.task_closed
+    assert recorded.reviewer_role is Role.caseworker
+    assert recorded.recorded_at == FIXED_NOW
     [entry] = harness.audit.entries  # one audit entry, even for the retried request
     assert entry.action is AuditAction.caseworker_action
     assert entry.outcome is AuditOutcome.refused
@@ -194,9 +197,10 @@ def test_FR_001_07_allowed_action_signals_with_principal_reviewer_returns_202(
     [(case_id, request)] = harness.workflows.signals
     assert case_id == case.case_id
     assert request.task_id == TASK
-    assert request.action is CaseworkerActionType.approve_denial
+    assert request.action is ActionType.approve_denial
     assert request.reviewer_id == user.id
-    assert str(request.request_id) == body["request_id"]
+    assert request.reviewer_role is role
+    assert str(request.action_id) == body["request_id"]  # 010's signal payload (ADR-001-11)
 
 
 def test_FR_001_20_review_action_logs_no_reason_text(

@@ -58,16 +58,19 @@ async def test_migration_runner_records_and_skips_applied_versions(
         recorded = [doc["_id"] async for doc in ctx.db[MIGRATIONS_COLLECTION].find()]
 
     assert again == []
-    assert recorded == ["0001_baseline", "0002_case_lifecycle", "0003_case_screens"]
+    assert sorted(recorded) == [
+        "0001_baseline",
+        "0002_review_queue",
+        "0003_case_lifecycle",
+        "0004_case_screens",
+    ]
 
 
-# --- 0002_case_lifecycle (001, KD-11) -------------------------------------------------------
+# --- 0003_case_lifecycle (001, KD-11) -------------------------------------------------------
 
 CASE_COLLECTIONS = [
     "cases",
     "case_events",
-    "review_tasks",
-    "caseworker_actions",
     "coverage_periods",
     "outbox",
 ]
@@ -200,14 +203,14 @@ async def test_FR_001_02_validator_rejects_unknown_case_state_and_outcome(
             await target.insert_one({**base, **document})
 
 
-async def test_FR_001_01_migration_0002_downgrade_restores_baseline_validators(
+async def test_FR_001_01_migration_0003_downgrade_restores_baseline_validators(
     integration_settings: Settings, owner_url: str
 ) -> None:
     async with open_client(owner_url) as client:
         ctx = _ctx(client, integration_settings)
         tightened = await _validators(ctx.db)
 
-        downgraded = await down(ctx, "0001_baseline")
+        downgraded = await down(ctx, "0002_review_queue")
         baseline = await _validators(ctx.db)
         baseline_indexes = await ctx.db["cases"].index_information()
         loose_insert = await ctx.db["cases"].insert_one(
@@ -219,8 +222,8 @@ async def test_FR_001_01_migration_0002_downgrade_restores_baseline_validators(
         again = await _validators(ctx.db)
         indexes = await ctx.db["cases"].index_information()
 
-    assert downgraded == ["0003_case_screens", "0002_case_lifecycle"]
-    assert upgraded == ["0002_case_lifecycle", "0003_case_screens"]
+    assert downgraded == ["0004_case_screens", "0003_case_lifecycle"]
+    assert upgraded == ["0003_case_lifecycle", "0004_case_screens"]
     for name in CASE_COLLECTIONS:
         assert baseline[name] != tightened[name]
         assert again[name] == tightened[name]
@@ -232,7 +235,7 @@ async def test_FR_001_01_migration_0002_downgrade_restores_baseline_validators(
     )
 
 
-# --- 0003_case_screens (001, KD-11, ADR-001-08) ----------------------------------------------
+# --- 0004_case_screens (001, KD-11, ADR-001-08) ----------------------------------------------
 
 
 def _application(case_id: uuid.UUID | None = None) -> dict[str, Any]:
@@ -284,7 +287,7 @@ def _with_member_field(doc: dict[str, Any]) -> dict[str, Any]:
     ],
     ids=["top-level-extra", "nested-member-extra", "synthetic-false", "synthetic-missing"],
 )
-async def test_FR_001_24_migration_0003_applications_validator_is_strict(
+async def test_FR_001_24_migration_0004_applications_validator_is_strict(
     integration_settings: Settings, owner_url: str, mutate: Any
 ) -> None:
     async with open_client(owner_url) as client:
@@ -297,7 +300,7 @@ async def test_FR_001_24_migration_0003_applications_validator_is_strict(
     assert accepted.acknowledged
 
 
-async def test_FR_001_27_migration_0003_adds_open_deadline_index_and_downgrade_drops_both(
+async def test_FR_001_27_migration_0004_adds_open_deadline_index_and_downgrade_drops_both(
     integration_settings: Settings, owner_url: str
 ) -> None:
     async with open_client(owner_url) as client:
@@ -305,7 +308,7 @@ async def test_FR_001_27_migration_0003_adds_open_deadline_index_and_downgrade_d
         indexes = await ctx.db["cases"].index_information()
         collections = set(await ctx.db.list_collection_names())
 
-        downgraded = await down(ctx, "0002_case_lifecycle")
+        downgraded = await down(ctx, "0003_case_lifecycle")
         down_indexes = await ctx.db["cases"].index_information()
         down_collections = set(await ctx.db.list_collection_names())
 
@@ -316,10 +319,10 @@ async def test_FR_001_27_migration_0003_adds_open_deadline_index_and_downgrade_d
     key = [("open", 1), ("decision_deadline", 1), ("_id", 1)]
     assert indexes["open_deadline"]["key"] == key
     assert "applications" in collections
-    assert downgraded == ["0003_case_screens"]
+    assert downgraded == ["0004_case_screens"]
     assert "open_deadline" not in down_indexes
     assert "applications" not in down_collections
-    assert "submission_reference_unique" in down_indexes  # 0002 is untouched
-    assert upgraded == ["0003_case_screens"]
+    assert "submission_reference_unique" in down_indexes  # 0003 is untouched
+    assert upgraded == ["0004_case_screens"]
     assert again_indexes["open_deadline"]["key"] == key
     assert "applications" in again_collections

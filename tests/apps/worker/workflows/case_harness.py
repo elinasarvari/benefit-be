@@ -17,15 +17,16 @@ from temporalio.testing import WorkflowEnvironment
 from temporalio.worker import Worker
 
 from apps.worker.workflows.case import CaseWorkflow
+from packages.domain.auth import Role
 from packages.domain.case import (
+    ActionType,
     CaseChange,
     CaseClock,
     CaseStart,
     CaseState,
     CaseStatus,
     CaseType,
-    CaseworkerActionRequest,
-    CaseworkerActionType,
+    CaseworkerActionSignal,
     DenialReason,
     Determination,
     DeterminationOutcome,
@@ -183,19 +184,22 @@ async def wait_for_changes(stubs: Stubs, count: int) -> None:
 
 def action(
     task_id: uuid.UUID,
-    kind: CaseworkerActionType,
+    kind: ActionType,
     reason: str | None = None,
     request_id: uuid.UUID | None = None,
-) -> CaseworkerActionRequest:
-    """Build the signal payload. `model_construct` lets a test send what the API would refuse."""
-    return CaseworkerActionRequest.model_construct(
+) -> CaseworkerActionSignal:
+    """Build 010's signal payload (ADR-001-11). `model_construct` lets a test send what the API
+    would refuse. `request_id` is the REST body's key, sent as the signal's `action_id`."""
+    return CaseworkerActionSignal.model_construct(
+        action_id=request_id or uuid.uuid4(),
         task_id=task_id,
         action=kind,
         reviewer_id=REVIEWER,
+        reviewer_role=Role.caseworker,
         reason=reason,
-        request_id=request_id or uuid.uuid4(),
+        submitted_at=datetime.now(UTC),
     )
 
 
-async def signal(handle: WorkflowHandle[Any, Any], request: CaseworkerActionRequest) -> None:
+async def signal(handle: WorkflowHandle[Any, Any], request: CaseworkerActionSignal) -> None:
     await handle.signal("caseworker_action", request)

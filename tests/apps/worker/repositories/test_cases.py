@@ -172,7 +172,7 @@ async def test_FR_001_20_override_outcome_stored_and_determination_unchanged(
     task = await client[integration_settings.MONGO_DB]["review_tasks"].find_one(
         {"case_id": case_id}
     )
-    assert task is not None and task["status"] == ReviewTaskStatus.resolved.value
+    assert task is not None and task["status"] == ReviewTaskStatus.closed.value
 
 
 async def test_FR_001_22_coverage_period_written_once_with_deterministic_id(

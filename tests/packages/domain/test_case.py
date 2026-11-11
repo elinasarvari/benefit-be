@@ -5,15 +5,15 @@ from uuid import UUID, uuid4
 import pytest
 from pydantic import ValidationError
 
+from apps.api.schemas.cases import ReviewActionBody
 from packages.domain.case import (
     SUBMISSION_NS,
+    ActionType,
     ApplicantMember,
     ApplicationForm,
     ApplicationSubmission,
     CaseState,
     CaseStatus,
-    CaseworkerActionRequest,
-    CaseworkerActionType,
     IllinoisAddress,
     Job,
     StoredApplication,
@@ -52,17 +52,15 @@ def test_FR_001_11_case_status_at_risk_at_ten_days_or_fewer(
     assert _status(days_remaining).at_risk is expected
 
 
-def _override(reason: str | None) -> CaseworkerActionRequest:
-    return CaseworkerActionRequest(
-        task_id=uuid4(),
-        action=CaseworkerActionType.override_to_approve,
-        reviewer_id=uuid4(),
-        reason=reason,
-        request_id=uuid4(),
+def _override(reason: str | None) -> ReviewActionBody:
+    """The REST body: the signal itself is 010's `CaseworkerActionSignal`, whose reason the
+    workflow checks (ADR-001-11, FR-010-05); the API refuses an override without one first."""
+    return ReviewActionBody(
+        action=ActionType.override_to_approve, reason=reason, request_id=uuid4()
     )
 
 
-@pytest.mark.parametrize("reason", [None, ""])
+@pytest.mark.parametrize("reason", [None, "", "   "])
 def test_FR_001_20_override_request_requires_reason_up_to_500_chars(reason: str | None) -> None:
     with pytest.raises(ValidationError):
         _override(reason)
@@ -75,12 +73,7 @@ def test_FR_001_20_override_request_accepts_500_chars_rejects_501() -> None:
 
 
 def test_FR_001_20_approve_denial_needs_no_reason() -> None:
-    request = CaseworkerActionRequest(
-        task_id=uuid4(),
-        action=CaseworkerActionType.approve_denial,
-        reviewer_id=uuid4(),
-        request_id=uuid4(),
-    )
+    request = ReviewActionBody(action=ActionType.approve_denial, request_id=uuid4())
     assert request.reason is None
 
 

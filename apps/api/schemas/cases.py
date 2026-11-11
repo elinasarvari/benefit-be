@@ -9,6 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from packages.domain.case import (
     REASON_MAX_LENGTH,
+    ActionType,
     ApplicationSubmission,
     CaseDetail,
     CaseHistoryPage,
@@ -16,7 +17,6 @@ from packages.domain.case import (
     CaseState,
     CaseStatus,
     CaseSummary,
-    CaseworkerActionType,
 )
 
 __all__ = [
@@ -31,8 +31,8 @@ __all__ = [
 ]
 
 ReviewAction = Literal[
-    CaseworkerActionType.approve_denial,
-    CaseworkerActionType.override_to_approve,
+    ActionType.approve_denial,
+    ActionType.override_to_approve,
 ]
 
 
@@ -50,7 +50,7 @@ class ReviewActionBody(BaseModel):
 
     @model_validator(mode="after")
     def _override_needs_reason(self) -> Self:
-        if self.action is CaseworkerActionType.override_to_approve and not (
+        if self.action is ActionType.override_to_approve and not (
             self.reason and self.reason.strip()
         ):
             raise ValueError("override_to_approve requires a reason")

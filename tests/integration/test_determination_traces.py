@@ -36,8 +36,8 @@ async def test_FR_003_05_every_seeded_history_and_test_set_determination_has_six
             doc async for doc in client[integration_settings.MONGO_DB]["determinations"].find({})
         ]
     assert records, "the seeded history holds no determinations (FR-003-22)"
-    for record in records:
-        _check_trace(f"determinations/{record['_id']}", record["rules"])
+    for record in records:  # DeterminationRecord: the engine output sits under `determination`
+        _check_trace(f"determinations/{record['_id']}", record["determination"]["rule_results"])
 
     history = sorted((GENERATED_DIR / "history").glob("*.json"))
     traced = 0

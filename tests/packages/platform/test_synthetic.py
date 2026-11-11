@@ -74,6 +74,21 @@ def test_FR_000_14_text_stamp_is_visible_and_detected(html: bool, media_type: st
         assert 'role="note"' in stamped
 
 
+@pytest.mark.parametrize(
+    ("data", "marked"),
+    [
+        (b'{"synthetic": true, "items": []}', True),
+        (b'{"synthetic": false}', False),
+        (b'{"synthetic": "true"}', False),
+        (b'{"items": [{"synthetic": true}]}', False),  # the flag must be on the document itself
+        (b"[]", False),
+        (b"not json", False),
+    ],
+)
+def test_FR_000_14_json_document_is_marked_by_its_top_level_flag(data: bytes, marked: bool) -> None:
+    assert is_marked(data, "application/json") is marked
+
+
 def test_FR_000_14_stamp_does_not_cover_body() -> None:
     pdf = PdfReader(io.BytesIO(stamp_pdf(make_pdf(pages=1))))
     page = pdf.pages[0]

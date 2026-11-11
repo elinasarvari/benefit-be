@@ -11,8 +11,6 @@ from __future__ import annotations
 import uuid
 from typing import Any
 
-import pytest
-
 from packages.domain.case import CaseState
 from packages.platform.settings import Settings
 from tests.integration.case_stack import (
@@ -24,12 +22,13 @@ from tests.integration.case_stack import (
     api,
     applicant_for,
     connect_temporal,
+    eventually,
+    get_case,
     mongo,
     new_task_queue,
     seeded_user,
     stack_settings,
     submit,
-    wait_for_state,
 )
 from tests.integration.fixtures import rebuild
 
@@ -78,14 +77,13 @@ async def _submit_and_settle(
             response = await submit(applicant)
             assert response.status_code == 201, response.text
             case_id: str = response.json()["case_id"]
-            for state in (CaseState.under_review, CaseState.approved, CaseState.denied):
-                try:
-                    await wait_for_state(caseworker, case_id, state)
-                    break
-                except AssertionError:
-                    continue
-            else:
-                pytest.fail(f"case {case_id} did not leave determining")
+            settled = (CaseState.under_review.value, CaseState.decided.value)
+
+            async def left_determining() -> dict[str, Any] | None:
+                body = await get_case(caseworker, case_id)
+                return body if body["state"] in settled else None
+
+            await eventually(left_determining, f"case {case_id} left determining")
             listed = await caseworker.get(f"{API}/cases/{case_id}/determinations")
     return case_id, response, listed
 
@@ -124,13 +122,16 @@ async def test_FR_003_23_determination_stored_by_workflow_is_readable_through_ap
         db = client[settings.MONGO_DB]
         record = await db["determinations"].find_one({"_id": uuid.UUID(view["determination_id"])})
         assert record is not None, "the API returned a determination that is not stored"
+        # DeterminationRecord (data-model.md): the engine output sits under `determination`.
+        stored = record["determination"]
         snapshot = await db["household_snapshots"].find_one(
-            {"case_id": uuid.UUID(case_id), "as_of_date": record["as_of_date"]}
+            {"_id": record["snapshot_id"], "case_id": uuid.UUID(case_id)}
         )
     assert snapshot is not None, "no snapshot was captured for the determination (FR-003-19)"
-    assert view["result"] == record["result"]
-    assert view["rule_set_id"] == record["rule_set_id"]
-    assert view["rule_set_version"] == record["rule_set_version"]
-    assert [r["rule_id"] for r in view["rules"]] == [r["rule_id"] for r in record["rules"]]
+    assert snapshot["as_of_date"] == stored["as_of_date"]
+    assert view["result"] == stored["result"]
+    assert view["rule_set_id"] == stored["rule_set_id"]
+    assert view["rule_set_version"] == stored["rule_set_version"]
+    assert [r["rule_id"] for r in view["rules"]] == [r["rule_id"] for r in stored["rule_results"]]
     assert view["household_size"] == len(snapshot["members"])
-    assert str(record["household_monthly_income"]) == view["household_monthly_income"]
+    assert str(stored["household_monthly_income"]) == view["household_monthly_income"]

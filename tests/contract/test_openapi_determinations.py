@@ -1,7 +1,9 @@
 """The committed OpenAPI file carries the determinations contract (003; TC-115; ADR-003-05).
 
-`specs/003-eligibility-rules/contracts/rest-api.openapi.yaml` is the agreed contract. The metarepo
-checks `repos/benefit-be` out two levels below its root, so the spec is found from there.
+`tests/contract/eligibility_rules/rest-api.openapi.yaml` is a verbatim copy of
+`specs/003-eligibility-rules/contracts/rest-api.openapi.yaml` in ai-immersion-metarepo, so this
+repo's CI can check it without the metarepo (as `case_lifecycle/` does for 001). Update the copy
+when the contract changes there.
 """
 
 from __future__ import annotations
@@ -15,17 +17,14 @@ import yaml
 
 from scripts.export_openapi import OUTPUT
 
-CONTRACT = (
-    Path(__file__).resolve().parents[4]
-    / "specs/003-eligibility-rules/contracts/rest-api.openapi.yaml"
-)
+CONTRACT = Path(__file__).parent / "eligibility_rules" / "rest-api.openapi.yaml"
 PATH = "/api/v1/cases/{case_id}/determinations"
 SCHEMAS = ("DeterminationList", "DeterminationView", "RuleResult", "MissingItem")
 
 
 def _load() -> tuple[dict[str, Any], dict[str, Any]]:
     if not CONTRACT.is_file():
-        pytest.fail(f"contract not found at {CONTRACT}; run inside the metarepo checkout")
+        pytest.fail(f"contract not found at {CONTRACT}")
     contract = yaml.safe_load(CONTRACT.read_text())
     committed = json.loads(Path(OUTPUT).read_text())
     return contract, committed

@@ -81,9 +81,10 @@ async def _trigger_and_collect() -> tuple[list[tuple[UUID, UUID]], list[str]]:
     return due, missing
 
 
-def test_FR_007_01_triggered_schedule_starts_every_active_period_ending_within_60_days() -> None:
+@pytest.mark.asyncio
+async def test_FR_007_01_triggered_schedule_starts_every_active_period_ending_within_60_days() -> None:
     """FR-007-01: triggered schedule starts every active period ending within 60 days."""
-    due, missing = asyncio.run(_trigger_and_collect())
+    due, missing = await _trigger_and_collect()
 
     assert due, "no active coverage period ends within 60 days: run `make reset`"
     assert missing == [], f"the schedule did not start a redetermination for periods {missing}"

@@ -8,7 +8,7 @@ from datetime import date, timedelta
 
 import pytest
 
-from apps.worker.repositories.cases import CaseRepository
+from apps.worker.repositories.cases import CaseRepository, to_bson
 from apps.worker.repositories.due_cases import DueCases, Opened
 from packages.domain.case import (
     CaseChange,
@@ -87,7 +87,7 @@ async def test_FR_007_05_renew_writes_new_period_and_prior_status_in_one_transac
         owner_url,
         integration_settings,
         "coverage_periods",
-        {**prior.model_dump(by_alias=True), "created_at": T0, "updated_at": T0},
+        to_bson({**prior.model_dump(by_alias=True), "created_at": T0, "updated_at": T0}),
     )
     db = client[integration_settings.MONGO_DB]
     audit = MongoAuditWriter(client, integration_settings.MONGO_AUDIT_DB)
@@ -125,7 +125,7 @@ async def test_FR_007_01_open_due_skips_household_with_open_case_until_next_day(
 
     db = client[integration_settings.MONGO_DB]
     await db["cases"].update_one(
-        {"_id": opened.start.case_id, "household_id": household_id}, {"$set": {"open": False}}
+        {"_id": opened.start.case_id, "household_id": household_id}, {"$set": {"state": "decided", "open": False}}
     )
     next_day = await due.open_case(second, T0 + timedelta(days=1), 1)
     assert next_day.opened is Opened.created

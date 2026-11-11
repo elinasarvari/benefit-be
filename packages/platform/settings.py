@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sys
+from datetime import date
 from decimal import Decimal
 from enum import StrEnum
 from typing import Any, Literal
@@ -88,6 +89,7 @@ class Settings(BaseSettings):
     SESSION_TTL_HOURS: int = Field(default=8, ge=1, le=24)
     SYSTEM_CREDENTIAL_SECRET: SecretStr
     DEMO_PASSWORD: SecretStr = SecretStr("")
+    SEED_ANCHOR_DATE: date = date(2026, 11, 10)
 
     # AI provider and modes
     LLM_PROVIDER: LlmProvider = LlmProvider.anthropic

@@ -14,45 +14,51 @@ import sys
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
-from uuid import UUID
 
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 
 from db.client import make_client
-from db.seeds.ids import HOUSEHOLD_A, HOUSEHOLD_B, HOUSEHOLD_C, SEED
-from db.seeds.users import SeedError, seed_users
-from packages.domain.case import DeterminationOutcome
+from db.seeds.documents import write_documents
+from db.seeds.history import History, build_history
+from db.seeds.households import YEARS, SeededDataset, build_dataset
+from db.seeds.ids import SEED
+from db.seeds.records import to_document
+from db.seeds.rule_sets import rule_set_documents, seed_rule_sets
+from db.seeds.test_sets import write_generated
+from db.seeds.users import DEMO_ACCOUNTS, SeedError, seed_users
+from db.seeds.verifications import verification_documents
 from packages.platform.settings import Settings, load_settings
 from packages.platform.synthetic import stamp_pdf
 
-GENERATOR_VERSION = "0.2.0"
+GENERATOR_VERSION = "0.3.0"
 GENERATED_DIR = Path(__file__).resolve().parent / "generated"
 SEEDED_AT = datetime(2026, 1, 1, tzinfo=UTC)
 
-# The result the 001 verification and determination stubs return for each household (research
-# R1), so `make dev` can drive every path: applicant1 approved, applicant2 review then denial or
-# override, applicant3 cannot-determine. 002 and 003 replace the stubs and ignore this field.
-STUB_RESULTS: dict[UUID, DeterminationOutcome] = {
-    HOUSEHOLD_A: DeterminationOutcome.eligible,
-    HOUSEHOLD_B: DeterminationOutcome.ineligible,
-    HOUSEHOLD_C: DeterminationOutcome.cannot_determine,
-}
 
-
-def household_documents() -> list[dict[str, Any]]:
+def household_documents(dataset: SeededDataset) -> list[dict[str, Any]]:
+    """One `households` document per generated household."""
     return [
-        {"_id": hid, "created_at": SEEDED_AT, "stub_result": result.value}
-        for hid, result in STUB_RESULTS.items()
+        {
+            "_id": h.household_id,
+            "created_at": SEEDED_AT,
+            "address_state": h.address_state,
+            "seed_key": h.seed_key,
+            "synthetic": True,
+        }
+        for h in dataset.households
     ]
 
 
-def stub_result_documents() -> list[dict[str, Any]]:
-    """The same results keyed by `household_id`, for the worker's household scope (ADR-001-06)."""
-    return [
-        {"_id": hid, "household_id": hid, "created_at": SEEDED_AT, "stub_result": result.value}
-        for hid, result in STUB_RESULTS.items()
-    ]
+def member_documents(dataset: SeededDataset) -> list[dict[str, Any]]:
+    documents = []
+    for h in dataset.households:
+        for y in YEARS:
+            for m in h.years[y].members:
+                document = to_document(m, "member_id")
+                document["synthetic"] = True
+                documents.append(document)
+    return documents
 
 
 def application_documents(cases: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -95,7 +101,7 @@ def application_documents(cases: list[dict[str, Any]]) -> list[dict[str, Any]]:
 def sample_pay_stub() -> bytes:
     """A one-page synthetic pay stub. Content sits well inside the label bands."""
     buffer = io.BytesIO()
-    pdf = canvas.Canvas(buffer, pagesize=letter)
+    pdf = canvas.Canvas(buffer, pagesize=letter, invariant=1)
     pdf.setFont("Helvetica-Bold", 14)
     pdf.drawString(72, 700, "Sample Employer Inc. (synthetic)")
     pdf.setFont("Helvetica", 11)
@@ -113,19 +119,52 @@ def sample_pay_stub() -> bytes:
     return stamp_pdf(buffer.getvalue())
 
 
+def collection_counts(dataset: SeededDataset, history: History) -> dict[str, int]:
+    """What `seed` writes to each collection, for the manifest (FR-003-22)."""
+    return {
+        "households": len(dataset.households),
+        "household_members": sum(
+            len(h.years[y].members) for h in dataset.households for y in YEARS
+        ),
+        "seeded_verifications": len(verification_documents(dataset)),
+        "rule_sets": len(rule_set_documents()),
+        "users": len(DEMO_ACCOUNTS),
+        "applications": len(history.documents["cases"]),
+        **history.counts(),
+    }
+
+
+def generate_files(dataset: SeededDataset, history: History, out_dir: Path) -> dict[str, Any]:
+    """Write every generated file (documents, test sets, history, manifest); no database."""
+    out_dir.joinpath("documents").mkdir(parents=True, exist_ok=True)
+    out_dir.joinpath("documents", "sample_pay_stub.pdf").write_bytes(sample_pay_stub())
+    write_documents(dataset, out_dir / "documents")
+    return write_generated(
+        dataset, history, out_dir, GENERATOR_VERSION, collection_counts(dataset, history)
+    )
+
+
 async def seed(settings: Settings) -> None:
     password = settings.DEMO_PASSWORD.get_secret_value()
     if not password:  # refuse before writing anything
         raise SeedError("DEMO_PASSWORD is not set; run make setup or set it in .env")
-    GENERATED_DIR.joinpath("documents").mkdir(parents=True, exist_ok=True)
-    GENERATED_DIR.joinpath("documents", "sample_pay_stub.pdf").write_bytes(sample_pay_stub())
+    dataset = build_dataset(settings.SEED_ANCHOR_DATE)
+    history = build_history(dataset)
+    generate_files(dataset, history, GENERATED_DIR)
 
     client = make_client(settings.MONGO_URL_OWNER.get_secret_value())
     try:
         db = client[settings.MONGO_DB]
-        await db["households"].insert_many(household_documents())
-        await db["household_stub_results"].insert_many(stub_result_documents())
-        # No case is seeded today; once one is, it gets its application here.
+        await db["households"].insert_many(household_documents(dataset))
+        await db["household_members"].insert_many(member_documents(dataset))
+        await db["seeded_verifications"].insert_many(verification_documents(dataset))
+        await seed_rule_sets(db)
+        # Completed history goes into an empty `cases` collection only, so seeding on top of
+        # a case inserted by hand never mixes the two.
+        if await db["cases"].count_documents({}, limit=1) == 0:
+            for name, documents in history.documents.items():
+                if documents:
+                    await db[name].insert_many(documents)
         seeded_cases = [doc async for doc in db["cases"].find()]
         if seeded_cases:
             await db["applications"].insert_many(application_documents(seeded_cases))
@@ -138,6 +177,9 @@ async def seed(settings: Settings) -> None:
                 "seed": SEED,
                 "generator_version": GENERATOR_VERSION,
                 "generated_at": SEEDED_AT,
+                "anchor_date": datetime.combine(
+                    settings.SEED_ANCHOR_DATE, datetime.min.time(), tzinfo=UTC
+                ),
             },
             upsert=True,
         )

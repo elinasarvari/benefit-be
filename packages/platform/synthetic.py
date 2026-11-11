@@ -7,6 +7,7 @@ The label always goes in a margin band, never over the document body, so the AI 
 from __future__ import annotations
 
 import io
+import json
 
 from PIL import Image, ImageDraw, ImageFont
 from PIL.PngImagePlugin import PngInfo
@@ -93,4 +94,10 @@ def is_marked(data: bytes, media_type: str) -> bool:
         return tag == SYNTHETIC_TAG
     if media_type in ("text/plain", "text/html"):
         return SYNTHETIC_LABEL in data.decode(errors="ignore")
+    if media_type == "application/json":  # 003's history and test sets: a top-level flag
+        try:
+            document = json.loads(data)
+        except ValueError:
+            return False
+        return isinstance(document, dict) and document.get("synthetic") is True
     return False

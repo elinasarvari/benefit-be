@@ -15,15 +15,16 @@ from pymongo.asynchronous.collection import AsyncCollection
 from pymongo.asynchronous.database import AsyncDatabase
 from pymongo.errors import DuplicateKeyError, WriteError
 
-from db.migrate import MigrationContext, down, up
+from db.migrate import MigrationContext, discover, down, up
 from packages.domain.review import ReviewCause, ReviewReason
 from packages.platform.settings import Settings
 from tests.integration.fixtures import open_client
 
 BASELINE = "0001_baseline"
 VERSION = "0002_review_queue"
-# 001's migrations come after this one and are rolled back and reapplied with it (ADR-001-11).
-LATER = ["0003_case_lifecycle", "0004_case_screens"]
+# Later migrations (001's, 003's, ...) are rolled back and reapplied with this one (ADR-001-11).
+# Taken from the migrations folder, so a new migration does not break this test.
+LATER = [name for name, _ in discover() if name > VERSION]
 NOW = datetime(2026, 3, 2, 15, 0, tzinfo=UTC)
 BASELINE_VALIDATOR = {
     "$jsonSchema": {

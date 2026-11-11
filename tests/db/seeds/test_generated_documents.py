@@ -12,6 +12,7 @@ MEDIA_TYPES = {
     ".jpeg": "image/jpeg",
     ".txt": "text/plain",
     ".html": "text/html",
+    ".json": "application/json",  # 003: history explanations/notices, test sets, manifest
 }
 
 

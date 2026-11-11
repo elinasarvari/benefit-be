@@ -97,7 +97,7 @@ openapi-check: openapi
 	git diff --exit-code openapi/openapi.json
 
 check: lint typecheck test-unit test-workflow test-contract openapi-check
-	gitleaks detect --no-banner --log-opts=HEAD  # this branch's history only, not every fetched ref
+	gitleaks detect --no-banner --config scripts/gitleaks.toml --log-opts=HEAD  # this branch's history only, not every fetched ref
 	uv run pip-audit
 
 # Every CI job's checks in both repos, one table. Starts MongoDB, Temporal and the stack as needed.

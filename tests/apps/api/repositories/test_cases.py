@@ -127,7 +127,12 @@ async def put(client: Client, settings: Settings, cases: list[Case]) -> None:
 
 
 async def fresh(settings: Settings) -> None:
+    """Seeded stores minus the cases: these tests count and page their own cases only, and the
+    003 history seed (FR-003-22, ADR-003-06) adds decided cases with their applications."""
     await rebuild(settings)
+    async with open_client(settings.MONGO_URL_OWNER.get_secret_value()) as owner:
+        for name in ("cases", "applications"):
+            await owner[settings.MONGO_DB][name].delete_many({})
 
 
 @pytest.mark.integration

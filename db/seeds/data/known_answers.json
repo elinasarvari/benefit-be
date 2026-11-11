@@ -1,0 +1,1790 @@
+[
+  {
+    "case_key": "KA-01-baseline-eligible",
+    "as_of_date": "2026-06-01",
+    "snapshot": {
+      "snapshot_id": "3b3bae48-5b32-58db-9829-e283c7aaf882",
+      "household_id": "6966a053-9646-51ed-a765-bd199acfc52f",
+      "case_id": "67e7b584-452f-5b56-bd42-43882c7a85cd",
+      "as_of_date": "2026-06-01",
+      "captured_at": "2026-05-30T12:00:00Z",
+      "members": [
+        {
+          "member_id": "40d34d06-1444-501b-866e-97f11d34f1f5",
+          "relationship": "self",
+          "date_of_birth": "1996-01-01",
+          "address_state": "IL",
+          "citizenship_attested": true,
+          "medicare_entitled": false,
+          "identity_verified": true,
+          "declared_zero_income": false,
+          "jobs": [
+            {
+              "job_id": "b9d3a85e-260c-555c-8ee2-3a9272de83cd",
+              "stubs": [
+                {
+                  "document_id": "03517ee0-a273-5b60-944a-b5c008621911",
+                  "pay_date": "2026-05-29",
+                  "frequency": "weekly",
+                  "gross_pay": "300"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "expected_result": "eligible",
+    "expected_failed": [],
+    "expected_missing": [],
+    "expected_income": "1300.00",
+    "expected_limit": "1782",
+    "covers": [
+      "ELIG-01:pass",
+      "ELIG-02:pass",
+      "ELIG-03:pass",
+      "ELIG-04:pass",
+      "ELIG-05:pass",
+      "ELIG-06:pass",
+      "year:2026",
+      "frequency:weekly"
+    ]
+  },
+  {
+    "case_key": "KA-02-elig01-out-of-state",
+    "as_of_date": "2026-06-01",
+    "snapshot": {
+      "snapshot_id": "6157d004-c99e-5e83-8154-e8b45d7bae1c",
+      "household_id": "1814692e-42ea-5429-9aa2-c9477d2c8fd1",
+      "case_id": "d0c0feb8-562a-5f2d-ba53-493428af3022",
+      "as_of_date": "2026-06-01",
+      "captured_at": "2026-05-30T12:00:00Z",
+      "members": [
+        {
+          "member_id": "1be3f589-5d0a-591e-b07f-252953fb5523",
+          "relationship": "self",
+          "date_of_birth": "1996-01-01",
+          "address_state": "WI",
+          "citizenship_attested": true,
+          "medicare_entitled": false,
+          "identity_verified": true,
+          "declared_zero_income": false,
+          "jobs": [
+            {
+              "job_id": "41a48224-006d-5015-9186-c29617c2eeb6",
+              "stubs": [
+                {
+                  "document_id": "25a58c2a-65e7-5626-83f7-d68e6ae34321",
+                  "pay_date": "2026-05-29",
+                  "frequency": "weekly",
+                  "gross_pay": "300"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "expected_result": "ineligible",
+    "expected_failed": [
+      "ELIG-01"
+    ],
+    "expected_missing": [],
+    "expected_income": "1300.00",
+    "expected_limit": "1782",
+    "covers": [
+      "ELIG-01:fail"
+    ]
+  },
+  {
+    "case_key": "KA-03-elig02-age-70",
+    "as_of_date": "2026-06-01",
+    "snapshot": {
+      "snapshot_id": "497d9943-ca60-5f59-bdd1-c675b417873a",
+      "household_id": "6a902686-a6e3-5d1b-8fbe-493fd4229d88",
+      "case_id": "5e99d0c7-5de0-51e1-adff-bc6b1ac46202",
+      "as_of_date": "2026-06-01",
+      "captured_at": "2026-05-30T12:00:00Z",
+      "members": [
+        {
+          "member_id": "3f9e69c3-2fbe-5bda-9460-e77c95a30421",
+          "relationship": "self",
+          "date_of_birth": "1956-01-01",
+          "address_state": "IL",
+          "citizenship_attested": true,
+          "medicare_entitled": false,
+          "identity_verified": true,
+          "declared_zero_income": false,
+          "jobs": [
+            {
+              "job_id": "9f11172d-4625-578d-96ec-7b3cd8052c08",
+              "stubs": [
+                {
+                  "document_id": "c3df42a9-cf86-5d23-ac33-e36da3903237",
+                  "pay_date": "2026-05-29",
+                  "frequency": "weekly",
+                  "gross_pay": "300"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "expected_result": "ineligible",
+    "expected_failed": [
+      "ELIG-02"
+    ],
+    "expected_missing": [],
+    "expected_income": "1300.00",
+    "expected_limit": "1782",
+    "covers": [
+      "ELIG-02:fail"
+    ]
+  },
+  {
+    "case_key": "KA-04-elig03-citizenship-false",
+    "as_of_date": "2026-06-01",
+    "snapshot": {
+      "snapshot_id": "86acaa70-80cb-58f8-8ceb-ae04850688ba",
+      "household_id": "e641e692-38cb-5f25-b8fe-44a0c0b5c120",
+      "case_id": "70f540cc-f845-5134-a5f1-e7842029595d",
+      "as_of_date": "2026-06-01",
+      "captured_at": "2026-05-30T12:00:00Z",
+      "members": [
+        {
+          "member_id": "5ef38320-1c88-50f8-ba04-ab1fc53e7ccd",
+          "relationship": "self",
+          "date_of_birth": "1996-01-01",
+          "address_state": "IL",
+          "citizenship_attested": false,
+          "medicare_entitled": false,
+          "identity_verified": true,
+          "declared_zero_income": false,
+          "jobs": [
+            {
+              "job_id": "d34ad30b-3de9-5c6e-ba3e-6fae9acfc388",
+              "stubs": [
+                {
+                  "document_id": "e2af4928-3a55-5b20-af09-f589ee1837ef",
+                  "pay_date": "2026-05-29",
+                  "frequency": "weekly",
+                  "gross_pay": "300"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "expected_result": "ineligible",
+    "expected_failed": [
+      "ELIG-03"
+    ],
+    "expected_missing": [],
+    "expected_income": "1300.00",
+    "expected_limit": "1782",
+    "covers": [
+      "ELIG-03:fail"
+    ]
+  },
+  {
+    "case_key": "KA-05-elig04-identity-false",
+    "as_of_date": "2026-06-01",
+    "snapshot": {
+      "snapshot_id": "9a29af6b-cb36-5898-984b-eb17e940fbd8",
+      "household_id": "ba41a123-6749-580e-b729-5e3602d93d40",
+      "case_id": "e3e71796-7419-5b34-a0d1-98f23bc1a197",
+      "as_of_date": "2026-06-01",
+      "captured_at": "2026-05-30T12:00:00Z",
+      "members": [
+        {
+          "member_id": "e78479fe-d8b1-5381-8be2-98ad95bc6595",
+          "relationship": "self",
+          "date_of_birth": "1996-01-01",
+          "address_state": "IL",
+          "citizenship_attested": true,
+          "medicare_entitled": false,
+          "identity_verified": false,
+          "declared_zero_income": false,
+          "jobs": [
+            {
+              "job_id": "88182ba5-c17f-5fc7-81a5-199782fee7ba",
+              "stubs": [
+                {
+                  "document_id": "ae02f04c-a0b2-54cf-b393-8c4bad8eeff2",
+                  "pay_date": "2026-05-29",
+                  "frequency": "weekly",
+                  "gross_pay": "300"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "expected_result": "ineligible",
+    "expected_failed": [
+      "ELIG-04"
+    ],
+    "expected_missing": [],
+    "expected_income": "1300.00",
+    "expected_limit": "1782",
+    "covers": [
+      "ELIG-04:fail"
+    ]
+  },
+  {
+    "case_key": "KA-06-elig05-medicare-true",
+    "as_of_date": "2026-06-01",
+    "snapshot": {
+      "snapshot_id": "d6b92e30-d797-50e4-b3a0-42ebb335f872",
+      "household_id": "edd06d4a-2146-5efe-ab82-2b659d19b222",
+      "case_id": "1a980a76-49ad-52ce-97e2-1c83b39d0978",
+      "as_of_date": "2026-06-01",
+      "captured_at": "2026-05-30T12:00:00Z",
+      "members": [
+        {
+          "member_id": "78c90e82-f0b2-590e-847a-665164f3755d",
+          "relationship": "self",
+          "date_of_birth": "1996-01-01",
+          "address_state": "IL",
+          "citizenship_attested": true,
+          "medicare_entitled": true,
+          "identity_verified": true,
+          "declared_zero_income": false,
+          "jobs": [
+            {
+              "job_id": "6c06986d-cab6-52b4-b006-a80617034767",
+              "stubs": [
+                {
+                  "document_id": "09600ee6-1a01-5824-9bfa-841db1d6d096",
+                  "pay_date": "2026-05-29",
+                  "frequency": "weekly",
+                  "gross_pay": "300"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "expected_result": "ineligible",
+    "expected_failed": [
+      "ELIG-05"
+    ],
+    "expected_missing": [],
+    "expected_income": "1300.00",
+    "expected_limit": "1782",
+    "covers": [
+      "ELIG-05:fail"
+    ]
+  },
+  {
+    "case_key": "KA-07-elig06-income-over-limit",
+    "as_of_date": "2026-06-01",
+    "snapshot": {
+      "snapshot_id": "dda7a10f-4764-5813-9c37-6cdd85d2b58b",
+      "household_id": "a7d3bd37-be1c-5b55-a058-63a7ab89ef78",
+      "case_id": "c1e043e1-9331-5d40-90a6-6ae140bf997f",
+      "as_of_date": "2026-06-01",
+      "captured_at": "2026-05-30T12:00:00Z",
+      "members": [
+        {
+          "member_id": "1fbc64b8-f737-5b56-8a59-88d019c15e48",
+          "relationship": "self",
+          "date_of_birth": "1996-01-01",
+          "address_state": "IL",
+          "citizenship_attested": true,
+          "medicare_entitled": false,
+          "identity_verified": true,
+          "declared_zero_income": false,
+          "jobs": [
+            {
+              "job_id": "f8d3b8aa-3330-59ad-be8f-e471a74f6c60",
+              "stubs": [
+                {
+                  "document_id": "f7e9d64e-c4d1-5d31-b4a4-f3cf976523e1",
+                  "pay_date": "2026-05-29",
+                  "frequency": "monthly",
+                  "gross_pay": "2000"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "expected_result": "ineligible",
+    "expected_failed": [
+      "ELIG-06"
+    ],
+    "expected_missing": [],
+    "expected_income": "2000.00",
+    "expected_limit": "1782",
+    "covers": [
+      "ELIG-06:fail",
+      "frequency:monthly"
+    ],
+    "expected_trace": {
+      "household_monthly_income": "2000.00",
+      "household_size": "1",
+      "threshold": "1782",
+      "program_year": "2026",
+      "policy_ref": "TM-3.1"
+    }
+  },
+  {
+    "case_key": "KA-08-elig03-citizenship-missing",
+    "as_of_date": "2026-06-01",
+    "snapshot": {
+      "snapshot_id": "b1fca2a2-4ec9-57af-a03e-904057067842",
+      "household_id": "e217ab67-9ac0-5557-9764-d41e72fc3a18",
+      "case_id": "c00341f5-0dd2-50c1-a2d3-6c5ac838c29e",
+      "as_of_date": "2026-06-01",
+      "captured_at": "2026-05-30T12:00:00Z",
+      "members": [
+        {
+          "member_id": "4e32a947-c9b9-5781-9e23-ac9959cb94d7",
+          "relationship": "self",
+          "date_of_birth": "1996-01-01",
+          "address_state": "IL",
+          "citizenship_attested": null,
+          "medicare_entitled": false,
+          "identity_verified": true,
+          "declared_zero_income": false,
+          "jobs": [
+            {
+              "job_id": "4242a2e7-315b-5d08-a6a6-8facec4c2f59",
+              "stubs": [
+                {
+                  "document_id": "436e65bc-765b-5c58-9819-450f7f2eab07",
+                  "pay_date": "2026-05-29",
+                  "frequency": "weekly",
+                  "gross_pay": "300"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "expected_result": "cannot_determine",
+    "expected_failed": [],
+    "expected_missing": [
+      "citizenship_attested"
+    ],
+    "expected_income": "1300.00",
+    "expected_limit": "1782",
+    "covers": [
+      "ELIG-03:missing"
+    ]
+  },
+  {
+    "case_key": "KA-09-elig04-identity-missing",
+    "as_of_date": "2026-06-01",
+    "snapshot": {
+      "snapshot_id": "1711ee75-1f52-59b0-8217-e8c9d823aaeb",
+      "household_id": "7c3ac531-c7df-55a7-9cb1-6911868f54b0",
+      "case_id": "1c3fb1d5-6a56-5ddf-9c4e-67b28c7bddfe",
+      "as_of_date": "2026-06-01",
+      "captured_at": "2026-05-30T12:00:00Z",
+      "members": [
+        {
+          "member_id": "d1d921f5-6493-583b-88d9-9dcb9e472378",
+          "relationship": "self",
+          "date_of_birth": "1996-01-01",
+          "address_state": "IL",
+          "citizenship_attested": true,
+          "medicare_entitled": false,
+          "identity_verified": null,
+          "declared_zero_income": false,
+          "jobs": [
+            {
+              "job_id": "ddda6e6e-05bb-56c0-bb1e-626a2beb4d55",
+              "stubs": [
+                {
+                  "document_id": "778fb577-4f79-59dc-9eb6-74bcc9af48d2",
+                  "pay_date": "2026-05-29",
+                  "frequency": "weekly",
+                  "gross_pay": "300"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "expected_result": "cannot_determine",
+    "expected_failed": [],
+    "expected_missing": [
+      "identity_verified"
+    ],
+    "expected_income": "1300.00",
+    "expected_limit": "1782",
+    "covers": [
+      "ELIG-04:missing"
+    ]
+  },
+  {
+    "case_key": "KA-10-elig05-medicare-missing",
+    "as_of_date": "2026-06-01",
+    "snapshot": {
+      "snapshot_id": "1122ac66-511c-5798-bffe-bd03373513a5",
+      "household_id": "d63d4e8c-7129-52c6-bb1d-f4f912b2a34b",
+      "case_id": "64f6b2b9-65e9-5914-b172-2a0376e8061b",
+      "as_of_date": "2026-06-01",
+      "captured_at": "2026-05-30T12:00:00Z",
+      "members": [
+        {
+          "member_id": "23117861-c72d-5589-896b-f618fa4036bd",
+          "relationship": "self",
+          "date_of_birth": "1996-01-01",
+          "address_state": "IL",
+          "citizenship_attested": true,
+          "medicare_entitled": null,
+          "identity_verified": true,
+          "declared_zero_income": false,
+          "jobs": [
+            {
+              "job_id": "a3ff0b90-c6f0-5f39-aa11-7ce3021cf49f",
+              "stubs": [
+                {
+                  "document_id": "95349951-7eb6-5f4f-b409-fac7ca3170a5",
+                  "pay_date": "2026-05-29",
+                  "frequency": "weekly",
+                  "gross_pay": "300"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "expected_result": "cannot_determine",
+    "expected_failed": [],
+    "expected_missing": [
+      "medicare_entitled"
+    ],
+    "expected_income": "1300.00",
+    "expected_limit": "1782",
+    "covers": [
+      "ELIG-05:missing"
+    ]
+  },
+  {
+    "case_key": "KA-11-elig06-pay-stub-missing",
+    "as_of_date": "2026-06-01",
+    "snapshot": {
+      "snapshot_id": "99ded005-4663-5780-aade-05261a4de8a6",
+      "household_id": "b5bf042d-4614-5290-9777-ca1767c24111",
+      "case_id": "f3ead110-c634-5b91-a735-54d3f3701de0",
+      "as_of_date": "2026-06-01",
+      "captured_at": "2026-05-30T12:00:00Z",
+      "members": [
+        {
+          "member_id": "bb4e29cb-a328-549a-9a2d-c235ec557d3e",
+          "relationship": "self",
+          "date_of_birth": "1996-01-01",
+          "address_state": "IL",
+          "citizenship_attested": true,
+          "medicare_entitled": false,
+          "identity_verified": true,
+          "declared_zero_income": false,
+          "jobs": [
+            {
+              "job_id": "0efc50f0-d2ca-5000-8ee6-0076c703eee1",
+              "stubs": []
+            }
+          ]
+        }
+      ]
+    },
+    "expected_result": "cannot_determine",
+    "expected_failed": [],
+    "expected_missing": [
+      "pay_stub"
+    ],
+    "expected_income": null,
+    "expected_limit": "1782",
+    "covers": [
+      "ELIG-06:missing"
+    ]
+  },
+  {
+    "case_key": "KA-12-no-applicant",
+    "as_of_date": "2026-06-01",
+    "snapshot": {
+      "snapshot_id": "1e5e0222-87a1-56d9-8c6a-e161ca495fb5",
+      "household_id": "e53574dc-3174-51a5-a183-581174199dea",
+      "case_id": "83e71964-7e38-5051-b569-8a71f827d5cc",
+      "as_of_date": "2026-06-01",
+      "captured_at": "2026-05-30T12:00:00Z",
+      "members": [
+        {
+          "member_id": "79cf3e42-aa31-56d7-a4ab-1dab310b3645",
+          "relationship": "spouse",
+          "date_of_birth": "1996-01-01",
+          "address_state": "IL",
+          "citizenship_attested": true,
+          "medicare_entitled": false,
+          "identity_verified": true,
+          "declared_zero_income": true,
+          "jobs": []
+        }
+      ]
+    },
+    "expected_result": "cannot_determine",
+    "expected_failed": [],
+    "expected_missing": [
+      "applicant"
+    ],
+    "expected_income": "0.00",
+    "expected_limit": "1782",
+    "covers": [
+      "ELIG-01:missing",
+      "ELIG-02:missing",
+      "ELIG-03:missing",
+      "ELIG-04:missing",
+      "ELIG-05:missing"
+    ]
+  },
+  {
+    "case_key": "KA-13-income-exactly-at-limit",
+    "as_of_date": "2026-06-01",
+    "snapshot": {
+      "snapshot_id": "5dee3d31-daba-5c4a-bffe-ac44d288b885",
+      "household_id": "983a4cf4-b9ad-5eb5-b0fb-456476631233",
+      "case_id": "3364629b-be44-55b0-a68c-8c8d03f01df7",
+      "as_of_date": "2026-06-01",
+      "captured_at": "2026-05-30T12:00:00Z",
+      "members": [
+        {
+          "member_id": "4afeb3e1-30ea-5adc-b88c-bbed2183c2a6",
+          "relationship": "self",
+          "date_of_birth": "1996-01-01",
+          "address_state": "IL",
+          "citizenship_attested": true,
+          "medicare_entitled": false,
+          "identity_verified": true,
+          "declared_zero_income": false,
+          "jobs": [
+            {
+              "job_id": "73ad0fa6-4b92-55f1-82a5-ae54edabc2da",
+              "stubs": [
+                {
+                  "document_id": "8b4cf2e5-104e-5ef7-99d8-4e43ea98f188",
+                  "pay_date": "2026-05-29",
+                  "frequency": "monthly",
+                  "gross_pay": "1782.00"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "expected_result": "eligible",
+    "expected_failed": [],
+    "expected_missing": [],
+    "expected_income": "1782.00",
+    "expected_limit": "1782",
+    "covers": [
+      "edge:income-at-limit",
+      "frequency:monthly"
+    ],
+    "expected_trace": {
+      "household_monthly_income": "1782.00",
+      "household_size": "1",
+      "threshold": "1782",
+      "program_year": "2026",
+      "policy_ref": "TM-3.1"
+    }
+  },
+  {
+    "case_key": "KA-14-income-one-cent-over-limit",
+    "as_of_date": "2026-06-01",
+    "snapshot": {
+      "snapshot_id": "f9f81d1a-5f21-50ad-bd27-a03537c481cc",
+      "household_id": "dba81807-7bdf-5aa2-8c4e-46b96dd77e5b",
+      "case_id": "2a9a5173-9e5f-5076-8e20-4b82489b1cc0",
+      "as_of_date": "2026-06-01",
+      "captured_at": "2026-05-30T12:00:00Z",
+      "members": [
+        {
+          "member_id": "80eb90be-9851-527c-8c1c-17558791aca1",
+          "relationship": "self",
+          "date_of_birth": "1996-01-01",
+          "address_state": "IL",
+          "citizenship_attested": true,
+          "medicare_entitled": false,
+          "identity_verified": true,
+          "declared_zero_income": false,
+          "jobs": [
+            {
+              "job_id": "f6efc04f-07dc-5fe0-a11f-c600e6d790f9",
+              "stubs": [
+                {
+                  "document_id": "0ee3e953-5a80-5ef8-a6c0-7accc2b82b55",
+                  "pay_date": "2026-05-29",
+                  "frequency": "monthly",
+                  "gross_pay": "1782.01"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "expected_result": "ineligible",
+    "expected_failed": [
+      "ELIG-06"
+    ],
+    "expected_missing": [],
+    "expected_income": "1782.01",
+    "expected_limit": "1782",
+    "covers": [
+      "edge:income-at-limit"
+    ]
+  },
+  {
+    "case_key": "KA-15-turns-19-on-as-of-date",
+    "as_of_date": "2026-06-01",
+    "snapshot": {
+      "snapshot_id": "ba00dc4c-3be9-5d1c-8ba8-36b2297ba3d5",
+      "household_id": "68cc1d30-0027-576a-bec7-3f6f761f8453",
+      "case_id": "b032f252-e025-58c6-ac8f-6915c2a46f44",
+      "as_of_date": "2026-06-01",
+      "captured_at": "2026-05-30T12:00:00Z",
+      "members": [
+        {
+          "member_id": "c561df52-d5c5-54e6-aad0-c8c2d130eb73",
+          "relationship": "self",
+          "date_of_birth": "2007-06-01",
+          "address_state": "IL",
+          "citizenship_attested": true,
+          "medicare_entitled": false,
+          "identity_verified": true,
+          "declared_zero_income": false,
+          "jobs": [
+            {
+              "job_id": "9a7bfe0e-c70b-5a84-98b3-b2d3fc6c6539",
+              "stubs": [
+                {
+                  "document_id": "4aa682d7-a605-595e-bd5d-5f2bfe64fa02",
+                  "pay_date": "2026-05-29",
+                  "frequency": "weekly",
+                  "gross_pay": "300"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "expected_result": "eligible",
+    "expected_failed": [],
+    "expected_missing": [],
+    "expected_income": "1300.00",
+    "expected_limit": "1782",
+    "covers": [
+      "edge:turns-19-or-65"
+    ]
+  },
+  {
+    "case_key": "KA-16-one-day-before-19",
+    "as_of_date": "2026-06-01",
+    "snapshot": {
+      "snapshot_id": "17dcfbb0-f073-5beb-91d3-ac53e9caea4a",
+      "household_id": "f854765e-46c3-544b-b110-b21dc0a42f2c",
+      "case_id": "15371e48-83a6-5862-b863-76701c3191e6",
+      "as_of_date": "2026-06-01",
+      "captured_at": "2026-05-30T12:00:00Z",
+      "members": [
+        {
+          "member_id": "76df159a-432f-5ca9-a110-acbdd6adff83",
+          "relationship": "self",
+          "date_of_birth": "2007-06-02",
+          "address_state": "IL",
+          "citizenship_attested": true,
+          "medicare_entitled": false,
+          "identity_verified": true,
+          "declared_zero_income": false,
+          "jobs": [
+            {
+              "job_id": "88a40362-5d40-5d64-81f7-0be13f8ea4d4",
+              "stubs": [
+                {
+                  "document_id": "a04f1dc7-6ce0-54db-b6e3-fe4ebc276383",
+                  "pay_date": "2026-05-29",
+                  "frequency": "weekly",
+                  "gross_pay": "300"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "expected_result": "ineligible",
+    "expected_failed": [
+      "ELIG-02"
+    ],
+    "expected_missing": [],
+    "expected_income": "1300.00",
+    "expected_limit": "1782",
+    "covers": [
+      "edge:turns-19-or-65"
+    ]
+  },
+  {
+    "case_key": "KA-17-turns-65-on-as-of-date",
+    "as_of_date": "2026-06-01",
+    "snapshot": {
+      "snapshot_id": "0692de29-2a97-5471-84fb-a7641f3a250f",
+      "household_id": "72c3d7ec-2439-5244-9b05-64e111187628",
+      "case_id": "c2fcda27-80e4-5eb0-b36e-a2d57b5cb75f",
+      "as_of_date": "2026-06-01",
+      "captured_at": "2026-05-30T12:00:00Z",
+      "members": [
+        {
+          "member_id": "9ee92fd4-2e9d-5df2-abb6-24f71b67199f",
+          "relationship": "self",
+          "date_of_birth": "1961-06-01",
+          "address_state": "IL",
+          "citizenship_attested": true,
+          "medicare_entitled": false,
+          "identity_verified": true,
+          "declared_zero_income": false,
+          "jobs": [
+            {
+              "job_id": "bb3e6c0e-419f-5edf-92a9-9696e0b6912f",
+              "stubs": [
+                {
+                  "document_id": "aff0d568-a8fd-5fea-8698-89276c813c36",
+                  "pay_date": "2026-05-29",
+                  "frequency": "weekly",
+                  "gross_pay": "300"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "expected_result": "ineligible",
+    "expected_failed": [
+      "ELIG-02"
+    ],
+    "expected_missing": [],
+    "expected_income": "1300.00",
+    "expected_limit": "1782",
+    "covers": [
+      "edge:turns-19-or-65"
+    ]
+  },
+  {
+    "case_key": "KA-18-one-day-before-65",
+    "as_of_date": "2026-06-01",
+    "snapshot": {
+      "snapshot_id": "3aaf1aa6-d199-5ba4-97c0-d3813b890cc3",
+      "household_id": "e4890a3a-5bfc-59b3-a6cd-004219306c24",
+      "case_id": "6a42ac1b-3d53-5995-830a-d0b9bf703f42",
+      "as_of_date": "2026-06-01",
+      "captured_at": "2026-05-30T12:00:00Z",
+      "members": [
+        {
+          "member_id": "b969e7d5-db0f-554d-ab8f-3e922844c1bb",
+          "relationship": "self",
+          "date_of_birth": "1961-06-02",
+          "address_state": "IL",
+          "citizenship_attested": true,
+          "medicare_entitled": false,
+          "identity_verified": true,
+          "declared_zero_income": false,
+          "jobs": [
+            {
+              "job_id": "9e82fcf1-3ed5-5887-bc46-181868177a4d",
+              "stubs": [
+                {
+                  "document_id": "5200f6c8-8d68-5657-a6db-bcad9b43a430",
+                  "pay_date": "2026-05-29",
+                  "frequency": "weekly",
+                  "gross_pay": "300"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "expected_result": "eligible",
+    "expected_failed": [],
+    "expected_missing": [],
+    "expected_income": "1300.00",
+    "expected_limit": "1782",
+    "covers": [
+      "edge:turns-19-or-65"
+    ]
+  },
+  {
+    "case_key": "KA-19-zero-income",
+    "as_of_date": "2026-06-01",
+    "snapshot": {
+      "snapshot_id": "15f58eeb-6dcd-579a-bd2a-bd7f871b6d1b",
+      "household_id": "9febaf22-bc87-5e40-942e-40fb932de2b8",
+      "case_id": "d62ffaea-2a7f-581e-8405-fe3745f61b59",
+      "as_of_date": "2026-06-01",
+      "captured_at": "2026-05-30T12:00:00Z",
+      "members": [
+        {
+          "member_id": "f86bbd55-47db-5e41-85f8-10b6a9e2b747",
+          "relationship": "self",
+          "date_of_birth": "1996-01-01",
+          "address_state": "IL",
+          "citizenship_attested": true,
+          "medicare_entitled": false,
+          "identity_verified": true,
+          "declared_zero_income": true,
+          "jobs": []
+        }
+      ]
+    },
+    "expected_result": "eligible",
+    "expected_failed": [],
+    "expected_missing": [],
+    "expected_income": "0.00",
+    "expected_limit": "1782",
+    "covers": [
+      "edge:zero-income"
+    ]
+  },
+  {
+    "case_key": "KA-20-fail-plus-missing",
+    "as_of_date": "2026-06-01",
+    "snapshot": {
+      "snapshot_id": "47454207-1f05-5ba7-b513-fb474c481293",
+      "household_id": "3d034853-fd36-54d1-8c0a-9603cef4db84",
+      "case_id": "c9d83c88-2ed5-5f0d-b496-33ee392e1bde",
+      "as_of_date": "2026-06-01",
+      "captured_at": "2026-05-30T12:00:00Z",
+      "members": [
+        {
+          "member_id": "8616426a-77a0-5e2d-83fd-65fe4c8c7146",
+          "relationship": "self",
+          "date_of_birth": "1996-01-01",
+          "address_state": "WI",
+          "citizenship_attested": null,
+          "medicare_entitled": false,
+          "identity_verified": true,
+          "declared_zero_income": false,
+          "jobs": [
+            {
+              "job_id": "2434e296-3312-5e9f-aceb-3a7320d53c45",
+              "stubs": [
+                {
+                  "document_id": "0ec6c1e8-742b-5d9f-a601-cf24b9d85265",
+                  "pay_date": "2026-05-29",
+                  "frequency": "weekly",
+                  "gross_pay": "300"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "expected_result": "ineligible",
+    "expected_failed": [
+      "ELIG-01"
+    ],
+    "expected_missing": [
+      "citizenship_attested"
+    ],
+    "expected_income": "1300.00",
+    "expected_limit": "1782",
+    "covers": [
+      "edge:fail-plus-missing"
+    ]
+  },
+  {
+    "case_key": "KA-21-weekly-400",
+    "as_of_date": "2026-06-01",
+    "snapshot": {
+      "snapshot_id": "e57c1287-ad8c-5944-bb5a-a07be04aeb0d",
+      "household_id": "2a594897-75ee-5ec4-9977-a9383c41f983",
+      "case_id": "fce6e563-5a9d-5ca0-8bc7-3539279daef6",
+      "as_of_date": "2026-06-01",
+      "captured_at": "2026-05-30T12:00:00Z",
+      "members": [
+        {
+          "member_id": "71a5d0f9-ea59-5ce0-b159-7ec3b1396689",
+          "relationship": "self",
+          "date_of_birth": "1996-01-01",
+          "address_state": "IL",
+          "citizenship_attested": true,
+          "medicare_entitled": false,
+          "identity_verified": true,
+          "declared_zero_income": false,
+          "jobs": [
+            {
+              "job_id": "74291eb4-d57d-5128-ba34-bc870ce2ecee",
+              "stubs": [
+                {
+                  "document_id": "f80e87ab-f9bb-54d9-b13c-89e37b190a55",
+                  "pay_date": "2026-05-29",
+                  "frequency": "weekly",
+                  "gross_pay": "400"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "expected_result": "eligible",
+    "expected_failed": [],
+    "expected_missing": [],
+    "expected_income": "1733.33",
+    "expected_limit": "1782",
+    "covers": [
+      "edge:weekly-400",
+      "frequency:weekly"
+    ]
+  },
+  {
+    "case_key": "KA-22-biweekly-1000",
+    "as_of_date": "2026-06-01",
+    "snapshot": {
+      "snapshot_id": "f7f352b9-051f-5efa-a7bc-9b2c093756f7",
+      "household_id": "7c60030f-20ed-5434-9283-f01f0f8f0f65",
+      "case_id": "5edd27e8-591d-59d9-bda0-b06c3b141ba6",
+      "as_of_date": "2026-06-01",
+      "captured_at": "2026-05-30T12:00:00Z",
+      "members": [
+        {
+          "member_id": "b4721c1f-fef9-51de-9105-bb53ba2b5968",
+          "relationship": "self",
+          "date_of_birth": "1996-01-01",
+          "address_state": "IL",
+          "citizenship_attested": true,
+          "medicare_entitled": false,
+          "identity_verified": true,
+          "declared_zero_income": false,
+          "jobs": [
+            {
+              "job_id": "6032f843-b3a2-5eba-a2f6-8760d0894dad",
+              "stubs": [
+                {
+                  "document_id": "c70c61d5-e3fe-5a4b-89df-ef19ffd09f5b",
+                  "pay_date": "2026-05-29",
+                  "frequency": "biweekly",
+                  "gross_pay": "1000"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "expected_result": "ineligible",
+    "expected_failed": [
+      "ELIG-06"
+    ],
+    "expected_missing": [],
+    "expected_income": "2166.67",
+    "expected_limit": "1782",
+    "covers": [
+      "frequency:biweekly"
+    ]
+  },
+  {
+    "case_key": "KA-23-semimonthly-800",
+    "as_of_date": "2026-06-01",
+    "snapshot": {
+      "snapshot_id": "089e97b6-d6ae-5662-9df8-52e8f0bc7df0",
+      "household_id": "9ecdb2cd-1154-5203-a1d0-39c8f3e2a346",
+      "case_id": "0bfc1b6c-8e69-59f9-b682-c45f67c0313b",
+      "as_of_date": "2026-06-01",
+      "captured_at": "2026-05-30T12:00:00Z",
+      "members": [
+        {
+          "member_id": "69adc5d6-f544-58d6-92ff-c485bf9be3fc",
+          "relationship": "self",
+          "date_of_birth": "1996-01-01",
+          "address_state": "IL",
+          "citizenship_attested": true,
+          "medicare_entitled": false,
+          "identity_verified": true,
+          "declared_zero_income": false,
+          "jobs": [
+            {
+              "job_id": "4c115df1-fc3e-50b9-a615-d45f1fe2fed5",
+              "stubs": [
+                {
+                  "document_id": "505a8a54-d98c-5e10-9e91-be6c686f7a8a",
+                  "pay_date": "2026-05-29",
+                  "frequency": "semimonthly",
+                  "gross_pay": "800"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "expected_result": "eligible",
+    "expected_failed": [],
+    "expected_missing": [],
+    "expected_income": "1600.00",
+    "expected_limit": "1782",
+    "covers": [
+      "frequency:semimonthly"
+    ]
+  },
+  {
+    "case_key": "KA-24-monthly-1500",
+    "as_of_date": "2026-06-01",
+    "snapshot": {
+      "snapshot_id": "30fb44c8-153b-5640-8909-b12785235332",
+      "household_id": "d61770b3-e179-597e-9f31-a1c307a18318",
+      "case_id": "4a609019-e003-5c8c-8b66-1f57be82e992",
+      "as_of_date": "2026-06-01",
+      "captured_at": "2026-05-30T12:00:00Z",
+      "members": [
+        {
+          "member_id": "bbdc377f-dd07-5078-8f93-d32e7b4f9570",
+          "relationship": "self",
+          "date_of_birth": "1996-01-01",
+          "address_state": "IL",
+          "citizenship_attested": true,
+          "medicare_entitled": false,
+          "identity_verified": true,
+          "declared_zero_income": false,
+          "jobs": [
+            {
+              "job_id": "588e1252-b1f9-5c25-9fee-0ced686f8b5a",
+              "stubs": [
+                {
+                  "document_id": "febcc58b-19f8-5c42-a2cf-4a89240c2b1b",
+                  "pay_date": "2026-05-29",
+                  "frequency": "monthly",
+                  "gross_pay": "1500"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "expected_result": "eligible",
+    "expected_failed": [],
+    "expected_missing": [],
+    "expected_income": "1500.00",
+    "expected_limit": "1782",
+    "covers": [
+      "frequency:monthly"
+    ]
+  },
+  {
+    "case_key": "KA-25-two-jobs-mixed-frequencies",
+    "as_of_date": "2026-06-01",
+    "snapshot": {
+      "snapshot_id": "f4b35834-32bc-5d0d-93a9-c1e41ddce791",
+      "household_id": "b913da22-fffd-588d-ba60-e3646354313b",
+      "case_id": "85eba25d-e0a3-5d27-a110-77e726c335e9",
+      "as_of_date": "2026-06-01",
+      "captured_at": "2026-05-30T12:00:00Z",
+      "members": [
+        {
+          "member_id": "c9c35fcb-2c70-566d-8cc2-efd84df685ed",
+          "relationship": "self",
+          "date_of_birth": "1996-01-01",
+          "address_state": "IL",
+          "citizenship_attested": true,
+          "medicare_entitled": false,
+          "identity_verified": true,
+          "declared_zero_income": false,
+          "jobs": [
+            {
+              "job_id": "7ce71699-2629-5f7f-8185-dc6cc51636a5",
+              "stubs": [
+                {
+                  "document_id": "b5b56c1b-ca67-5b45-98fd-5141c0c4d90b",
+                  "pay_date": "2026-05-29",
+                  "frequency": "weekly",
+                  "gross_pay": "200"
+                }
+              ]
+            },
+            {
+              "job_id": "f540594e-7168-592d-8522-2f1d543f7d42",
+              "stubs": [
+                {
+                  "document_id": "2e57b7b6-2013-57a5-ba09-fab2fc820402",
+                  "pay_date": "2026-05-29",
+                  "frequency": "biweekly",
+                  "gross_pay": "400"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "expected_result": "eligible",
+    "expected_failed": [],
+    "expected_missing": [],
+    "expected_income": "1733.34",
+    "expected_limit": "1782",
+    "covers": [
+      "multiple-jobs"
+    ]
+  },
+  {
+    "case_key": "KA-26-size-2-two-earners",
+    "as_of_date": "2026-06-01",
+    "snapshot": {
+      "snapshot_id": "c2c3ca2a-148d-59a3-a889-19a3c318914f",
+      "household_id": "31753b63-1b1f-5f11-825f-572306142c04",
+      "case_id": "8e20aa7e-2fc9-5d2c-a595-1c8848a5c0dc",
+      "as_of_date": "2026-06-01",
+      "captured_at": "2026-05-30T12:00:00Z",
+      "members": [
+        {
+          "member_id": "a9e58d94-c75c-54bd-a7bc-63db7a69d094",
+          "relationship": "self",
+          "date_of_birth": "1996-01-01",
+          "address_state": "IL",
+          "citizenship_attested": true,
+          "medicare_entitled": false,
+          "identity_verified": true,
+          "declared_zero_income": false,
+          "jobs": [
+            {
+              "job_id": "a5c57fd5-ddbb-5a0b-9d33-7334604fa6ef",
+              "stubs": [
+                {
+                  "document_id": "ad5db46e-64c5-5992-bf05-b99c5184e16b",
+                  "pay_date": "2026-05-29",
+                  "frequency": "monthly",
+                  "gross_pay": "1500"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "member_id": "ec4b8e9b-88f0-5b30-a6bc-0d698ad4b092",
+          "relationship": "spouse",
+          "date_of_birth": "1996-01-01",
+          "address_state": "IL",
+          "citizenship_attested": true,
+          "medicare_entitled": false,
+          "identity_verified": true,
+          "declared_zero_income": false,
+          "jobs": [
+            {
+              "job_id": "ed741088-50ba-5d66-a2e0-c2bce2c49fe6",
+              "stubs": [
+                {
+                  "document_id": "be555deb-143a-555c-b9c1-e862b416f845",
+                  "pay_date": "2026-05-29",
+                  "frequency": "weekly",
+                  "gross_pay": "200"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "expected_result": "eligible",
+    "expected_failed": [],
+    "expected_missing": [],
+    "expected_income": "2366.67",
+    "expected_limit": "2380",
+    "covers": [
+      "multiple-members"
+    ]
+  },
+  {
+    "case_key": "KA-27-latest-stub-wins",
+    "as_of_date": "2026-06-01",
+    "snapshot": {
+      "snapshot_id": "68d85bae-500e-5802-acbf-2159f2b25269",
+      "household_id": "6cc2fd5f-f355-51de-be95-f969eb4b85ef",
+      "case_id": "03e16a92-ea92-554f-9cf8-1c820a849059",
+      "as_of_date": "2026-06-01",
+      "captured_at": "2026-05-30T12:00:00Z",
+      "members": [
+        {
+          "member_id": "8d09f7f4-cf98-559b-b990-3741fe89cb21",
+          "relationship": "self",
+          "date_of_birth": "1996-01-01",
+          "address_state": "IL",
+          "citizenship_attested": true,
+          "medicare_entitled": false,
+          "identity_verified": true,
+          "declared_zero_income": false,
+          "jobs": [
+            {
+              "job_id": "b5d9e938-a9c0-5e17-846d-89462d072f5e",
+              "stubs": [
+                {
+                  "document_id": "3104f73e-c669-5d23-b25e-85e4cea633e7",
+                  "pay_date": "2026-04-03",
+                  "frequency": "weekly",
+                  "gross_pay": "900"
+                },
+                {
+                  "document_id": "77ab7edd-2f6c-5f31-bfc0-9c6523bbcd4c",
+                  "pay_date": "2026-05-29",
+                  "frequency": "weekly",
+                  "gross_pay": "400"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "expected_result": "eligible",
+    "expected_failed": [],
+    "expected_missing": [],
+    "expected_income": "1733.33",
+    "expected_limit": "1782",
+    "covers": [
+      "latest-stub"
+    ]
+  },
+  {
+    "case_key": "KA-28-spouse-facts-ignored",
+    "as_of_date": "2026-06-01",
+    "snapshot": {
+      "snapshot_id": "e77f97d6-db18-5d0c-9a96-e84d817e7680",
+      "household_id": "820960da-c3b0-5f39-b091-ad7b748d2f35",
+      "case_id": "c9faca16-112c-56df-baf5-bb4bd2bcec37",
+      "as_of_date": "2026-06-01",
+      "captured_at": "2026-05-30T12:00:00Z",
+      "members": [
+        {
+          "member_id": "6b3202c9-a9ec-5033-8a0f-fc60bb1fab21",
+          "relationship": "self",
+          "date_of_birth": "1996-01-01",
+          "address_state": "IL",
+          "citizenship_attested": true,
+          "medicare_entitled": false,
+          "identity_verified": true,
+          "declared_zero_income": false,
+          "jobs": [
+            {
+              "job_id": "468cc15b-16ac-5503-9661-943b793f784d",
+              "stubs": [
+                {
+                  "document_id": "6456cf64-814f-5765-bf02-b0ae66c51a73",
+                  "pay_date": "2026-05-29",
+                  "frequency": "weekly",
+                  "gross_pay": "300"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "member_id": "4f1cdc42-f650-5612-bb7b-78f71d78ce77",
+          "relationship": "spouse",
+          "date_of_birth": "1996-01-01",
+          "address_state": "WI",
+          "citizenship_attested": true,
+          "medicare_entitled": true,
+          "identity_verified": true,
+          "declared_zero_income": true,
+          "jobs": []
+        }
+      ]
+    },
+    "expected_result": "eligible",
+    "expected_failed": [],
+    "expected_missing": [],
+    "expected_income": "1300.00",
+    "expected_limit": "2380",
+    "covers": [
+      "applicant-only"
+    ]
+  },
+  {
+    "case_key": "KA-29-2025-size-1-income-1700",
+    "as_of_date": "2025-06-01",
+    "snapshot": {
+      "snapshot_id": "44027538-1c80-5459-bbf0-b3e5707e4af3",
+      "household_id": "53c58779-cf70-5c37-83aa-362e96f61d5c",
+      "case_id": "ffa85e42-34eb-5c85-89c1-1dee8a4e083a",
+      "as_of_date": "2025-06-01",
+      "captured_at": "2026-05-30T12:00:00Z",
+      "members": [
+        {
+          "member_id": "fbc3b291-efef-5ade-840f-2d105596bae8",
+          "relationship": "self",
+          "date_of_birth": "1996-01-01",
+          "address_state": "IL",
+          "citizenship_attested": true,
+          "medicare_entitled": false,
+          "identity_verified": true,
+          "declared_zero_income": false,
+          "jobs": [
+            {
+              "job_id": "0ad6dc5a-e905-5850-855f-e7ff747e3fe3",
+              "stubs": [
+                {
+                  "document_id": "e722bd30-cecc-54d7-9ab6-2c37a448ac3b",
+                  "pay_date": "2026-05-29",
+                  "frequency": "monthly",
+                  "gross_pay": "1700"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "expected_result": "eligible",
+    "expected_failed": [],
+    "expected_missing": [],
+    "expected_income": "1700.00",
+    "expected_limit": "1725",
+    "covers": [
+      "ELIG-01:pass",
+      "ELIG-02:pass",
+      "ELIG-03:pass",
+      "ELIG-04:pass",
+      "ELIG-05:pass",
+      "ELIG-06:pass",
+      "year:2025",
+      "edge:size-change"
+    ]
+  },
+  {
+    "case_key": "KA-30-2026-size-2-income-1700",
+    "as_of_date": "2026-06-01",
+    "snapshot": {
+      "snapshot_id": "abad5b15-3106-56ad-a8b4-4e8212dabda5",
+      "household_id": "8245e75a-2801-5a69-b85a-565433efb608",
+      "case_id": "c495259d-ffb2-5400-b502-e72b1dace2f0",
+      "as_of_date": "2026-06-01",
+      "captured_at": "2026-05-30T12:00:00Z",
+      "members": [
+        {
+          "member_id": "32fc4c47-da3c-5fad-b77a-71b6af61d1f2",
+          "relationship": "self",
+          "date_of_birth": "1996-01-01",
+          "address_state": "IL",
+          "citizenship_attested": true,
+          "medicare_entitled": false,
+          "identity_verified": true,
+          "declared_zero_income": false,
+          "jobs": [
+            {
+              "job_id": "37b30c7b-1e9d-56ed-9325-1ecc2845732a",
+              "stubs": [
+                {
+                  "document_id": "bba71fc5-970a-581f-937a-96de0c6f8c67",
+                  "pay_date": "2026-05-29",
+                  "frequency": "monthly",
+                  "gross_pay": "1700"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "member_id": "0d4d6a1c-7a61-5d37-9b74-5dd5ff3c9b78",
+          "relationship": "child",
+          "date_of_birth": "2018-03-01",
+          "address_state": "IL",
+          "citizenship_attested": true,
+          "medicare_entitled": false,
+          "identity_verified": true,
+          "declared_zero_income": true,
+          "jobs": []
+        }
+      ]
+    },
+    "expected_result": "eligible",
+    "expected_failed": [],
+    "expected_missing": [],
+    "expected_income": "1700.00",
+    "expected_limit": "2380",
+    "covers": [
+      "year:2026",
+      "edge:size-change"
+    ]
+  },
+  {
+    "case_key": "KA-31-replay-2025-fails-at-1750",
+    "as_of_date": "2025-06-01",
+    "snapshot": {
+      "snapshot_id": "8fc2f15a-3256-596c-8827-e0674ee03db3",
+      "household_id": "70618981-e425-5342-9382-c8a261512315",
+      "case_id": "bb051492-c3c6-5cff-b89a-ab8dffb0494c",
+      "as_of_date": "2025-06-01",
+      "captured_at": "2026-05-30T12:00:00Z",
+      "members": [
+        {
+          "member_id": "bd7af6cd-2232-51d2-a9c7-b4915d1f3b50",
+          "relationship": "self",
+          "date_of_birth": "1996-01-01",
+          "address_state": "IL",
+          "citizenship_attested": true,
+          "medicare_entitled": false,
+          "identity_verified": true,
+          "declared_zero_income": false,
+          "jobs": [
+            {
+              "job_id": "578a3c56-5cf2-500b-92ac-01e910adabc1",
+              "stubs": [
+                {
+                  "document_id": "fe3dbed3-6d2a-5020-86d2-cdf3d1910d68",
+                  "pay_date": "2026-05-29",
+                  "frequency": "monthly",
+                  "gross_pay": "1750"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "expected_result": "ineligible",
+    "expected_failed": [
+      "ELIG-06"
+    ],
+    "expected_missing": [],
+    "expected_income": "1750.00",
+    "expected_limit": "1725",
+    "covers": [
+      "year:2025",
+      "replay"
+    ]
+  },
+  {
+    "case_key": "KA-32-replay-2026-passes-at-1750",
+    "as_of_date": "2026-06-01",
+    "snapshot": {
+      "snapshot_id": "7fa8de06-6e61-5d74-9f78-cbe45ee3c054",
+      "household_id": "12ba1ff6-6fbb-5176-9d92-99c6bc9c9995",
+      "case_id": "9638d87a-8b95-5a2d-8b9f-27e1d9c041f3",
+      "as_of_date": "2026-06-01",
+      "captured_at": "2026-05-30T12:00:00Z",
+      "members": [
+        {
+          "member_id": "8bac084c-db5c-5030-88e9-8a5c0514d0ab",
+          "relationship": "self",
+          "date_of_birth": "1996-01-01",
+          "address_state": "IL",
+          "citizenship_attested": true,
+          "medicare_entitled": false,
+          "identity_verified": true,
+          "declared_zero_income": false,
+          "jobs": [
+            {
+              "job_id": "de8abe46-a69e-5050-986f-f8ca2cf32b18",
+              "stubs": [
+                {
+                  "document_id": "6dd1fcf4-8293-50f6-abb5-47ae39b984df",
+                  "pay_date": "2026-05-29",
+                  "frequency": "monthly",
+                  "gross_pay": "1750"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "expected_result": "eligible",
+    "expected_failed": [],
+    "expected_missing": [],
+    "expected_income": "1750.00",
+    "expected_limit": "1782",
+    "covers": [
+      "year:2026",
+      "replay"
+    ]
+  },
+  {
+    "case_key": "KA-33-boundary-2025-01-01",
+    "as_of_date": "2025-01-01",
+    "snapshot": {
+      "snapshot_id": "c2fba6fe-f0e3-5eaa-ab6e-16567f0b95ab",
+      "household_id": "06e1e2d0-eac7-5a5e-b3ef-48c3f0652a51",
+      "case_id": "a13dc96a-e53d-59f0-b0aa-8dbcb8aad3e3",
+      "as_of_date": "2025-01-01",
+      "captured_at": "2026-05-30T12:00:00Z",
+      "members": [
+        {
+          "member_id": "b70c5c48-5133-5378-8bb6-82eda61288e7",
+          "relationship": "self",
+          "date_of_birth": "1996-01-01",
+          "address_state": "IL",
+          "citizenship_attested": true,
+          "medicare_entitled": false,
+          "identity_verified": true,
+          "declared_zero_income": false,
+          "jobs": [
+            {
+              "job_id": "80acf9fb-95e4-5a2b-86dd-45a99adb4990",
+              "stubs": [
+                {
+                  "document_id": "8ec7a1fa-14de-5531-aeda-f9edef76b9b4",
+                  "pay_date": "2026-05-29",
+                  "frequency": "weekly",
+                  "gross_pay": "300"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "expected_result": "eligible",
+    "expected_failed": [],
+    "expected_missing": [],
+    "expected_income": "1300.00",
+    "expected_limit": "1725",
+    "covers": [
+      "year:2025",
+      "boundary"
+    ]
+  },
+  {
+    "case_key": "KA-34-boundary-2025-12-31",
+    "as_of_date": "2025-12-31",
+    "snapshot": {
+      "snapshot_id": "80ad3999-49e9-5059-8ec1-f1d5d6bfac1f",
+      "household_id": "684f375b-5fe2-505f-82cb-1f3d3398e1ef",
+      "case_id": "ec031007-34a6-5e1f-abe1-045c509a7798",
+      "as_of_date": "2025-12-31",
+      "captured_at": "2026-05-30T12:00:00Z",
+      "members": [
+        {
+          "member_id": "bc32a3ee-70a7-5de6-8c6b-fada1d09ec28",
+          "relationship": "self",
+          "date_of_birth": "1996-01-01",
+          "address_state": "IL",
+          "citizenship_attested": true,
+          "medicare_entitled": false,
+          "identity_verified": true,
+          "declared_zero_income": false,
+          "jobs": [
+            {
+              "job_id": "77fe2a1b-b1ec-52c0-b2bd-cdb2a265cead",
+              "stubs": [
+                {
+                  "document_id": "135eff54-6a18-528d-bcb2-675121bc34c9",
+                  "pay_date": "2026-05-29",
+                  "frequency": "weekly",
+                  "gross_pay": "300"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "expected_result": "eligible",
+    "expected_failed": [],
+    "expected_missing": [],
+    "expected_income": "1300.00",
+    "expected_limit": "1725",
+    "covers": [
+      "year:2025",
+      "boundary"
+    ]
+  },
+  {
+    "case_key": "KA-35-boundary-2026-01-01",
+    "as_of_date": "2026-01-01",
+    "snapshot": {
+      "snapshot_id": "b8927511-79f2-5a8d-bc08-f933520c0430",
+      "household_id": "e1a5f48c-2458-5a7a-9054-bb29a04a2bf1",
+      "case_id": "3db99471-2c7f-5d83-8d3f-0fe980725a69",
+      "as_of_date": "2026-01-01",
+      "captured_at": "2026-05-30T12:00:00Z",
+      "members": [
+        {
+          "member_id": "d122dec3-ffff-5ee5-ba14-1c28f0bd93b1",
+          "relationship": "self",
+          "date_of_birth": "1996-01-01",
+          "address_state": "IL",
+          "citizenship_attested": true,
+          "medicare_entitled": false,
+          "identity_verified": true,
+          "declared_zero_income": false,
+          "jobs": [
+            {
+              "job_id": "3c524de7-eab8-57cf-a05d-dc5b584de78d",
+              "stubs": [
+                {
+                  "document_id": "cb5594bd-1019-5f4a-917d-928ab4667378",
+                  "pay_date": "2026-05-29",
+                  "frequency": "weekly",
+                  "gross_pay": "300"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "expected_result": "eligible",
+    "expected_failed": [],
+    "expected_missing": [],
+    "expected_income": "1300.00",
+    "expected_limit": "1782",
+    "covers": [
+      "year:2026",
+      "boundary"
+    ]
+  },
+  {
+    "case_key": "KA-36-boundary-2026-12-31",
+    "as_of_date": "2026-12-31",
+    "snapshot": {
+      "snapshot_id": "f4654b63-c648-560b-a15b-606e91ab1725",
+      "household_id": "40cde9e2-6e71-5c26-8d56-1263100c2f21",
+      "case_id": "c3d476f8-b3b4-5374-843d-cace89c09f00",
+      "as_of_date": "2026-12-31",
+      "captured_at": "2026-05-30T12:00:00Z",
+      "members": [
+        {
+          "member_id": "a54099b5-e422-55ad-a94b-f1c7377c6e36",
+          "relationship": "self",
+          "date_of_birth": "1996-01-01",
+          "address_state": "IL",
+          "citizenship_attested": true,
+          "medicare_entitled": false,
+          "identity_verified": true,
+          "declared_zero_income": false,
+          "jobs": [
+            {
+              "job_id": "c515dc35-b9ab-5ef3-b3d3-efa1010de174",
+              "stubs": [
+                {
+                  "document_id": "dcfbe016-5959-5fd4-a411-1b0866e6eb61",
+                  "pay_date": "2026-05-29",
+                  "frequency": "weekly",
+                  "gross_pay": "300"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "expected_result": "eligible",
+    "expected_failed": [],
+    "expected_missing": [],
+    "expected_income": "1300.00",
+    "expected_limit": "1782",
+    "covers": [
+      "year:2026",
+      "boundary"
+    ]
+  },
+  {
+    "case_key": "KA-37-no-rule-set-2024-12-31",
+    "as_of_date": "2024-12-31",
+    "snapshot": {
+      "snapshot_id": "58d93598-1214-5e6a-8454-7973f864cb0b",
+      "household_id": "09d30447-107b-5f8b-8a2e-e1ce8b231f6e",
+      "case_id": "04100194-a67a-58fa-8d8e-32cfdfc7bcb4",
+      "as_of_date": "2024-12-31",
+      "captured_at": "2026-05-30T12:00:00Z",
+      "members": [
+        {
+          "member_id": "ce0a22f4-743e-5377-a0fe-a6f1885464c5",
+          "relationship": "self",
+          "date_of_birth": "1996-01-01",
+          "address_state": "IL",
+          "citizenship_attested": true,
+          "medicare_entitled": false,
+          "identity_verified": true,
+          "declared_zero_income": false,
+          "jobs": [
+            {
+              "job_id": "e718f798-2519-5e22-906f-4428bfe6d46d",
+              "stubs": [
+                {
+                  "document_id": "de571772-c76e-5c3c-9a71-f8a302f85d51",
+                  "pay_date": "2026-05-29",
+                  "frequency": "weekly",
+                  "gross_pay": "300"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "expected_result": "cannot_determine",
+    "expected_failed": [],
+    "expected_missing": [
+      "rule_set"
+    ],
+    "expected_income": "1300.00",
+    "expected_limit": null,
+    "covers": [
+      "edge:no-rule-set",
+      "ELIG-01:missing",
+      "ELIG-02:missing",
+      "ELIG-06:missing"
+    ]
+  },
+  {
+    "case_key": "KA-38-no-rule-set-2027-01-01",
+    "as_of_date": "2027-01-01",
+    "snapshot": {
+      "snapshot_id": "6cdf97fc-3ea7-5ffe-a0fe-61d27f2a899c",
+      "household_id": "b0f56c60-7b69-5976-81bf-b018eef2270b",
+      "case_id": "f8b26e7c-b2d5-59e7-994f-80908e1b95ff",
+      "as_of_date": "2027-01-01",
+      "captured_at": "2026-05-30T12:00:00Z",
+      "members": [
+        {
+          "member_id": "c3ce58b5-3ce7-5b6c-ba7d-221c61f927d4",
+          "relationship": "self",
+          "date_of_birth": "1996-01-01",
+          "address_state": "IL",
+          "citizenship_attested": true,
+          "medicare_entitled": false,
+          "identity_verified": true,
+          "declared_zero_income": false,
+          "jobs": [
+            {
+              "job_id": "7c3086e9-d458-59b4-b1f8-79b626285a09",
+              "stubs": [
+                {
+                  "document_id": "63669451-8601-5d7b-b6b2-f2478d74e09a",
+                  "pay_date": "2026-05-29",
+                  "frequency": "weekly",
+                  "gross_pay": "300"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "expected_result": "cannot_determine",
+    "expected_failed": [],
+    "expected_missing": [
+      "rule_set"
+    ],
+    "expected_income": "1300.00",
+    "expected_limit": null,
+    "covers": [
+      "edge:no-rule-set"
+    ]
+  }
+]

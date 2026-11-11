@@ -41,6 +41,7 @@ async def seed_users(
             "password_hash": password_hash,
             "role": role.value,
             "created_at": created_at,
+            "synthetic": True,
         }
         if household_id is not None:
             document["household_id"] = household_id

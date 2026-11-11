@@ -12,6 +12,7 @@ from packages.platform.errors import Forbidden
 from packages.platform.scope import (
     HOUSEHOLD_SCOPED,
     Scope,
+    ScopeKind,
     ScopeRequired,
     find_many,
     find_one,
@@ -106,6 +107,45 @@ async def test_FR_000_19_system_scope_limited_to_its_case(cases) -> None:  # typ
     assert other is None
     with pytest.raises(Forbidden):
         await find_many(cases, "household_members", system, projection=PROJECTION)
+
+
+async def test_FR_003_16_worker_scope_cannot_read_another_households_seeded_verifications(
+    integration_settings: Settings, owner_url: str
+) -> None:
+    member_a, member_b = uuid.uuid4(), uuid.uuid4()
+    async with open_client(owner_url) as client:
+        db = client[integration_settings.MONGO_DB]
+        await db["seeded_verifications"].delete_many({})
+        await db["seeded_verifications"].insert_many(
+            [
+                {
+                    "_id": uuid.uuid4(),
+                    "household_id": household,
+                    "member_id": member,
+                    "identity_verified": True,
+                    "jobs": [],
+                }
+                for household, member in ((HOUSEHOLD_A, member_a), (HOUSEHOLD_B, member_b))
+            ]
+        )
+        worker_a = Scope.for_worker(CASE_A, HOUSEHOLD_A)
+        projection = {"_id": 0, "household_id": 1, "member_id": 1}
+
+        own = await find_many(db, "seeded_verifications", worker_a, projection=projection)
+        other = await find_one(
+            db, "seeded_verifications", worker_a, {"member_id": member_b}, projection=projection
+        )
+        await db["seeded_verifications"].delete_many({})
+
+    assert own == [{"household_id": HOUSEHOLD_A, "member_id": member_a}]
+    assert other is None
+    with pytest.raises(Forbidden):
+        await find_many(
+            db,
+            "seeded_verifications",
+            Scope(ScopeKind.worker, case_id=CASE_A),
+            projection=projection,
+        )
 
 
 def test_FR_000_19_no_unscoped_queries_on_household_collections() -> None:

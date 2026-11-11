@@ -97,7 +97,8 @@ async def test_FR_001_24_double_submit_writes_one_application_and_refusal_writes
         first = await submit(applicant, reference)
         second = await submit(applicant, reference)
         refused = await submit(applicant, uuid.uuid4())
-        stored = await s.documents("applications", {})
+        # The seed holds other households' history applications (FR-003-22); count this one's.
+        stored = await s.documents("applications", {"household_id": ELIGIBLE_HOUSEHOLD})
 
     assert (first.status_code, second.status_code, refused.status_code) == (201, 200, 409)
     assert [d["_id"] for d in stored] == [case_id_for(reference)]
@@ -110,8 +111,9 @@ async def test_FR_001_24_stored_application_matches_submitted_form(
         reference = uuid.uuid4()
         response = await submit(s.applicant(ELIGIBLE_HOUSEHOLD), reference)
         assert response.status_code == 201, response.text
-        (stored,) = await s.documents("applications", {})
-        (case,) = await s.documents("cases", {})
+        mine = {"household_id": ELIGIBLE_HOUSEHOLD}  # the seed holds other households' history
+        (stored,) = await s.documents("applications", mine)
+        (case,) = await s.documents("cases", mine)
 
     expected = form_dict()
     assert stored["synthetic"] is True

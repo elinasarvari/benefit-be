@@ -598,6 +598,150 @@
         "title": "DenialReason",
         "type": "string"
       },
+      "DeterminationList": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/DeterminationView"
+            },
+            "maxItems": 20,
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "DeterminationList",
+        "type": "object"
+      },
+      "DeterminationOutcome": {
+        "enum": [
+          "eligible",
+          "ineligible",
+          "cannot_determine"
+        ],
+        "title": "DeterminationOutcome",
+        "type": "string"
+      },
+      "DeterminationView": {
+        "additionalProperties": false,
+        "description": "Read model of a stored determination for the case page (FR-003-23, ADR-003-05).",
+        "properties": {
+          "as_of_date": {
+            "format": "date",
+            "title": "As Of Date",
+            "type": "string"
+          },
+          "determination_id": {
+            "format": "uuid",
+            "title": "Determination Id",
+            "type": "string"
+          },
+          "household_monthly_income": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Household Monthly Income"
+          },
+          "household_size": {
+            "minimum": 0.0,
+            "title": "Household Size",
+            "type": "integer"
+          },
+          "missing_items": {
+            "items": {
+              "$ref": "#/components/schemas/MissingItem"
+            },
+            "title": "Missing Items",
+            "type": "array"
+          },
+          "monthly_income_limit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Monthly Income Limit"
+          },
+          "reason_code": {
+            "enum": [
+              "income_over_limit",
+              "other_rule_not_met",
+              null
+            ],
+            "title": "Reason Code",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "recorded_at": {
+            "format": "date-time",
+            "title": "Recorded At",
+            "type": "string"
+          },
+          "result": {
+            "$ref": "#/components/schemas/DeterminationOutcome"
+          },
+          "rule_set_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rule Set Id"
+          },
+          "rule_set_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rule Set Version"
+          },
+          "rules": {
+            "items": {
+              "$ref": "#/components/schemas/RuleResult"
+            },
+            "maxItems": 6,
+            "minItems": 6,
+            "title": "Rules",
+            "type": "array"
+          }
+        },
+        "required": [
+          "determination_id",
+          "result",
+          "reason_code",
+          "as_of_date",
+          "rule_set_id",
+          "rule_set_version",
+          "household_size",
+          "household_monthly_income",
+          "monthly_income_limit",
+          "rules",
+          "missing_items",
+          "recorded_at"
+        ],
+        "title": "DeterminationView",
+        "type": "object"
+      },
       "ErrorBody": {
         "additionalProperties": false,
         "properties": {
@@ -833,6 +977,51 @@
         "title": "LoginRequest",
         "type": "object"
       },
+      "MissingItem": {
+        "additionalProperties": false,
+        "properties": {
+          "item": {
+            "title": "Item",
+            "type": "string"
+          },
+          "job_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Job Id"
+          },
+          "member_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Member Id"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "item",
+          "member_id",
+          "job_id",
+          "reason"
+        ],
+        "title": "MissingItem",
+        "type": "object"
+      },
       "OpenReviewTask": {
         "additionalProperties": false,
         "properties": {
@@ -1029,6 +1218,77 @@
         ],
         "title": "Role",
         "type": "string"
+      },
+      "RuleId": {
+        "enum": [
+          "ELIG-01",
+          "ELIG-02",
+          "ELIG-03",
+          "ELIG-04",
+          "ELIG-05",
+          "ELIG-06"
+        ],
+        "title": "RuleId",
+        "type": "string"
+      },
+      "RuleOutcome": {
+        "enum": [
+          "pass",
+          "fail",
+          "missing"
+        ],
+        "title": "RuleOutcome",
+        "type": "string"
+      },
+      "RuleResult": {
+        "additionalProperties": false,
+        "properties": {
+          "inputs": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Inputs",
+            "type": "object"
+          },
+          "missing": {
+            "items": {
+              "$ref": "#/components/schemas/MissingItem"
+            },
+            "title": "Missing",
+            "type": "array"
+          },
+          "outcome": {
+            "$ref": "#/components/schemas/RuleOutcome"
+          },
+          "policy_ref": {
+            "title": "Policy Ref",
+            "type": "string"
+          },
+          "rule_id": {
+            "$ref": "#/components/schemas/RuleId"
+          },
+          "threshold": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Threshold"
+          }
+        },
+        "required": [
+          "rule_id",
+          "outcome",
+          "inputs",
+          "threshold",
+          "policy_ref",
+          "missing"
+        ],
+        "title": "RuleResult",
+        "type": "object"
       },
       "SessionInfo": {
         "properties": {
@@ -1498,6 +1758,79 @@
           }
         },
         "summary": "Case state, dates, outcome, coverage period and override",
+        "tags": [
+          "cases"
+        ]
+      }
+    },
+    "/api/v1/cases/{case_id}/determinations": {
+      "get": {
+        "operationId": "listCaseDeterminations",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "case_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Case Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeterminationList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not signed in"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Role not allowed"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not found or not visible to the caller"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "validation_failed"
+          }
+        },
+        "summary": "Determinations of a case, newest first, with the per-rule trace (FR-003-23)",
         "tags": [
           "cases"
         ]

@@ -158,7 +158,12 @@ def main() -> int:
         ("be: lint", "make lint", BE, None),
         ("be: types", "make typecheck", BE, None),
         ("be: pip-audit", "uv run pip-audit", BE, None),
-        ("be: gitleaks", "gitleaks detect --no-banner --log-opts=HEAD", BE, None),
+        (
+            "be: gitleaks",
+            "gitleaks detect --no-banner --config scripts/gitleaks.toml --log-opts=HEAD",
+            BE,
+            None,
+        ),
         ("be: unit", "make test-unit", BE, None),
         ("be: workflow", "make test-workflow", BE, None),
         ("be: openapi in sync", "make openapi-check", BE, None),

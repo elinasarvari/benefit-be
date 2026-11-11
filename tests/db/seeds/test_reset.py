@@ -1,13 +1,22 @@
 from __future__ import annotations
 
+import json
 import uuid
 from datetime import UTC, datetime
 
 import pytest
 
-from db.seeds.generate import application_documents, household_documents
+from db.seeds.generate import GENERATED_DIR, application_documents, household_documents
 from db.seeds.households import build_dataset
-from db.seeds.ids import HOUSEHOLD_A, HOUSEHOLD_B, HOUSEHOLD_C, SEED, SEED_ANCHOR_DATE, seeded_id
+from db.seeds.ids import (
+    HOUSEHOLD_A,
+    HOUSEHOLD_APPLICANT4,
+    HOUSEHOLD_B,
+    HOUSEHOLD_C,
+    SEED,
+    SEED_ANCHOR_DATE,
+    seeded_id,
+)
 from db.seeds.reset import ResetRefused, guard, reset
 from db.seeds.users import DEMO_ACCOUNTS
 from packages.platform.settings import Settings
@@ -48,7 +57,25 @@ def test_FR_003_14_households_carry_no_stub_result_and_demo_applicants_link_to_a
         for doc in documents
     )
     applicant_households = {hid for *_, hid in DEMO_ACCOUNTS if hid is not None}
-    assert applicant_households == synthetic_ids
+    assert applicant_households == synthetic_ids | {HOUSEHOLD_APPLICANT4}  # ADR-004-05
+
+
+async def test_FR_004_13_04_seeding_twice_gives_identical_manifest_hashes(
+    integration_settings: Settings, owner_url: str
+) -> None:
+    manifests = []
+    for _ in range(2):
+        await reset(integration_settings, analytics=False)
+        manifests.append(json.loads((GENERATED_DIR / "manifest.json").read_text()))
+    async with open_client(owner_url) as client:
+        db = client[integration_settings.MONGO_DB]
+        determinations = await db["determinations"].count_documents({})
+        explanations = await db["decision_explanations"].count_documents({"synthetic": True})
+
+    assert manifests[0]["files"] == manifests[1]["files"]
+    assert not any(name.startswith("history/explanations") for name in manifests[0]["files"])
+    assert manifests[0]["collections"]["decision_explanations"] == explanations
+    assert explanations == 2 * determinations
 
 
 async def test_FR_000_02_reset_refuses_non_local_host(integration_settings: Settings) -> None:

@@ -4,8 +4,9 @@ For a fixed sample of the non-demo households: one decided case from the previou
 and one decided case of the current period, each with its snapshot, determination (the real
 engine's output), events, review task and caseworker action where the result was not eligible,
 approval or denial outbox entry, and coverage period where approved, all in main's shapes.
-Pre-written explanations and notices go to `generated/history/` as files keyed by
-`determination_id` and `case_id`: their stores belong to 004 and 011 (ADR-003-06).
+Both audiences' explanations are built with `explain_determination` and stored in
+`decision_explanations` (ADR-004-02). Pre-written notices go to `generated/history/notices/` as
+files keyed by `case_id`: their store belongs to 011 (ADR-003-06).
 
 Demo households A, B and C get nothing here: they start with no open case and no coverage
 (FR-003-14). Every date is an offset from the dataset's anchor date, never the wall clock.
@@ -47,8 +48,10 @@ from packages.domain.case import (
     case_id_for,
 )
 from packages.domain.eligibility import Determination, DeterminationRecord, RuleId, RuleOutcome
+from packages.domain.explanation import ExplanationAudience
 from packages.domain.review import EvidenceRef, ReviewCause
 from packages.rules import evaluate
+from packages.rules.explanations import explain_determination
 
 HISTORY_HOUSEHOLDS = 60
 DEADLINE_DAYS = 45
@@ -68,13 +71,13 @@ COLLECTIONS = (
     "review_tasks",
     "caseworker_actions",
     "outbox",
+    "decision_explanations",
 )
 
 
 @dataclass(frozen=True)
 class History:
     documents: dict[str, list[dict[str, Any]]]
-    explanations: dict[UUID, dict[str, Any]] = field(default_factory=dict)
     notices: dict[tuple[UUID, str], dict[str, Any]] = field(default_factory=dict)
     due: list[dict[str, Any]] = field(default_factory=list)
 
@@ -129,7 +132,6 @@ def _plans(dataset: SeededDataset) -> list[_Plan]:
 
 def build_history(dataset: SeededDataset) -> History:
     docs: dict[str, list[dict[str, Any]]] = {name: [] for name in COLLECTIONS}
-    explanations: dict[UUID, dict[str, Any]] = {}
     notices: dict[tuple[UUID, str], dict[str, Any]] = {}
     due: list[dict[str, Any]] = []
     anchor = dataset.anchor
@@ -182,9 +184,7 @@ def build_history(dataset: SeededDataset) -> History:
         for name, items in parts.items():
             docs[name].extend(items)
         case = parts["cases"][0]
-        explanations[determination_id] = _explanation(
-            household.household_id, case_id, determination_id, determination
-        )
+        docs["decision_explanations"].extend(_explanations(record))
         notice_type = NoticeType.approval if case["outcome"] == "approved" else NoticeType.denial
         notices[(case_id, notice_type.value)] = {
             "case_id": str(case_id),
@@ -207,7 +207,7 @@ def build_history(dataset: SeededDataset) -> History:
                         "household": household,
                     }
                 )
-    return History(documents=docs, explanations=explanations, notices=notices, due=due)
+    return History(documents=docs, notices=notices, due=due)
 
 
 def _decide(
@@ -438,34 +438,15 @@ def _action_document(action: CaseworkerAction) -> dict[str, Any]:
     return document
 
 
-def _explanation(
-    household_id: UUID, case_id: UUID, determination_id: UUID, determination: Determination
-) -> dict[str, Any]:
-    refs = [r.policy_ref for r in determination.rule_results]
-    if determination.result is DeterminationOutcome.eligible:
-        text = (
-            f"Your household of {determination.household_size} meets every rule: "
-            f"monthly income {determination.household_monthly_income} is within the limit "
-            f"{determination.monthly_income_limit}."
-        )
-    elif determination.result is DeterminationOutcome.ineligible:
-        failed = ", ".join(
-            r.rule_id.value for r in determination.rule_results if r.outcome is RuleOutcome.fail
-        )
-        text = f"Your household did not meet these rules: {failed}."
-    else:
-        items = ", ".join(sorted({m.item for m in determination.missing_items}))
-        text = f"We could not decide because this information is missing: {items}."
-    return {
-        "determination_id": str(determination_id),
-        "case_id": str(case_id),
-        "household_id": str(household_id),
-        "result": determination.result.value,
-        "text": f"SYNTHETIC explanation. {text}",
-        "citations": refs,
-        "rule_ids": [r.rule_id.value for r in determination.rule_results],
-        "synthetic": True,
-    }
+def _explanations(record: DeterminationRecord) -> list[dict[str, Any]]:
+    documents = []
+    for audience in ExplanationAudience:
+        explanation = explain_determination(record, audience)
+        document = to_document(explanation)
+        document["_id"] = uuid5(record.determination_id, audience.value)
+        document["synthetic"] = True
+        documents.append(document)
+    return documents
 
 
 def _notice_text(notice_type: NoticeType, determination: Determination) -> str:

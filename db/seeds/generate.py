@@ -31,7 +31,7 @@ from db.seeds.verifications import verification_documents
 from packages.platform.settings import Settings, load_settings
 from packages.platform.synthetic import stamp_pdf
 
-GENERATOR_VERSION = "0.3.0"
+GENERATOR_VERSION = "0.4.0"
 GENERATED_DIR = Path(__file__).resolve().parent / "generated"
 SEEDED_AT = datetime(2026, 1, 1, tzinfo=UTC)
 

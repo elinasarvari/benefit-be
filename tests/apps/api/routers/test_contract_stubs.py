@@ -33,8 +33,6 @@ STUBS: list[tuple[str, str, Role, tuple[Role, ...], Any]] = [
     ("POST", f"/api/v1/cases/{ID}/documents", A, APPLICANT_ONLY, PAY_STUB),
     ("PUT", f"/api/v1/cases/{ID}/documents/{ID}/content", A, APPLICANT_ONLY, b"%PDF"),
     ("GET", f"/api/v1/cases/{ID}/verification", C, STAFF_ONLY, None),
-    ("GET", f"/api/v1/cases/{ID}/explanations", C, STAFF_ONLY, None),
-    ("GET", "/api/v1/me/history", A, APPLICANT_ONLY, None),
     ("GET", "/api/v1/me/notices", A, APPLICANT_ONLY, None),
     ("GET", f"/api/v1/me/notices/{ID}", A, APPLICANT_ONLY, None),
     ("GET", "/api/v1/me/requests", A, APPLICANT_ONLY, None),

@@ -3483,16 +3483,6 @@
               }
             },
             "description": "validation_failed"
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            },
-            "description": "not_implemented: the feature has not landed"
           }
         },
         "summary": "Caseworker explanations of a case's determinations, as stored (FR-004-15)",
@@ -4067,16 +4057,6 @@
               }
             },
             "description": "validation_failed"
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            },
-            "description": "not_implemented: the feature has not landed"
           }
         },
         "summary": "The applicant's decisions per coverage period, with explanations (FR-004-16)",

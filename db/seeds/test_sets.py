@@ -1,15 +1,16 @@
 """Test sets for the other features, the history files and the manifest (FR-003-13, -22, SC-003-03).
 
 Written to `db/seeds/generated/` with the fixed seed: `testsets/` (known_answers,
-pay_stub_extractions, redeterminations_due, expected_metrics), `history/explanations/*.json`,
-`history/notices/*.json` and `manifest.json` (seed, generator version, a SHA-256 per file and the
-document count per collection). Field sets are pinned by `tests/integration/test_seeded_dataset.py`.
+pay_stub_extractions, redeterminations_due, expected_metrics), `history/notices/*.json` and
+`manifest.json` (seed, generator version, a SHA-256 per file and the document count per
+collection). Field sets are pinned by `tests/integration/test_seeded_dataset.py`.
 """
 
 from __future__ import annotations
 
 import hashlib
 import json
+import shutil
 from collections import defaultdict
 from datetime import date
 from decimal import ROUND_HALF_UP, Decimal
@@ -162,8 +163,8 @@ def write_generated(
     }
     for name, items in sets.items():
         _dump(out_dir / "testsets" / f"{name}.json", _envelope(anchor, generator_version, items))
-    for determination_id, explanation in history.explanations.items():
-        _dump(out_dir / "history" / "explanations" / f"{determination_id}.json", explanation)
+    # Explanations live in `decision_explanations` now (ADR-004-02); drop files of earlier runs.
+    shutil.rmtree(out_dir / "history" / "explanations", ignore_errors=True)
     for (case_id, notice_type), notice in history.notices.items():
         _dump(out_dir / "history" / "notices" / f"{case_id}.{notice_type}.json", notice)
     return write_manifest(out_dir, anchor, counts, generator_version)

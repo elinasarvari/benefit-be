@@ -8,7 +8,7 @@ from pydantic import SecretStr
 from pymongo.errors import WriteError
 
 from db.seeds.generate import seed
-from db.seeds.ids import HOUSEHOLD_A, HOUSEHOLD_B, HOUSEHOLD_C
+from db.seeds.ids import HOUSEHOLD_A, HOUSEHOLD_APPLICANT4, HOUSEHOLD_B, HOUSEHOLD_C
 from db.seeds.reset import reset
 from db.seeds.users import SeedError
 from packages.domain.auth import Role
@@ -34,13 +34,41 @@ async def test_FR_000_05_seed_creates_each_role(
         "applicant1": Role.applicant.value,
         "applicant2": Role.applicant.value,
         "applicant3": Role.applicant.value,
+        "applicant4": Role.applicant.value,
         "caseworker1": Role.caseworker.value,
         "supervisor1": Role.supervisor.value,
     }
     assert users["applicant1"]["household_id"] == HOUSEHOLD_A
     assert users["applicant2"]["household_id"] == HOUSEHOLD_B
     assert users["applicant3"]["household_id"] == HOUSEHOLD_C
+    assert users["applicant4"]["household_id"] == HOUSEHOLD_APPLICANT4
     assert "household_id" not in users["caseworker1"]
+
+
+async def test_FR_004_16_01_seed_has_applicant4_with_decided_cases_and_applicant_explanations(
+    integration_settings: Settings, owner_url: str
+) -> None:
+    households = []
+    for _ in range(2):
+        await reset(integration_settings, analytics=False)
+        users = await users_by_name(integration_settings, owner_url)
+        households.append(users["applicant4"]["household_id"])
+    household_id = households[0]
+    async with open_client(owner_url) as client:
+        db = client[integration_settings.MONGO_DB]
+        cases = [d async for d in db["cases"].find({"household_id": household_id})]
+        explanations = [
+            d
+            async for d in db["decision_explanations"].find(
+                {"household_id": household_id, "audience": "applicant"}
+            )
+        ]
+
+    assert households[1] == household_id == HOUSEHOLD_APPLICANT4
+    assert len(cases) >= 2
+    assert all(case["state"] == "decided" for case in cases)
+    assert {e["case_id"] for e in explanations} == {case["_id"] for case in cases}
+    assert any(case["override"] is not None for case in cases)
 
 
 async def test_FR_000_21_password_stored_as_argon2id(

@@ -33,3 +33,6 @@ def seeded_id(name: str) -> uuid.UUID:
 HOUSEHOLD_A = seeded_id("household-a")
 HOUSEHOLD_B = seeded_id("household-b")
 HOUSEHOLD_C = seeded_id("household-c")
+# The first sampled history household (seed order) whose decided cases include overrides, so
+# applicant4 shows ADR-004-04's override line (ADR-004-05). A seed test guards the choice.
+HOUSEHOLD_APPLICANT4 = seeded_id("household-0018")

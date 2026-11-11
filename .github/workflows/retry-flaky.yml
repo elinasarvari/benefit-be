@@ -1,0 +1,34 @@
+name: Retry flaky
+
+# When a CI or Nightly run fails or is cancelled, rerun its failed jobs once if one of them failed on
+# the network (a package mirror down, DNS, a reset connection), not on the code. A real test failure
+# is never retried, and a run is retried at most once. The logic is in scripts/ci/retry-flaky.sh.
+#
+# workflow_run always runs this file and the script from the default branch, never from the PR,
+# and it reads only the run's metadata and logs, so a PR's code never runs with this token.
+on:
+  workflow_run:
+    workflows: [CI, Nightly]
+    types: [completed]
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  retry:
+    if: >-
+      github.event.workflow_run.run_attempt == 1 &&
+      contains(fromJSON('["failure", "cancelled", "timed_out"]'), github.event.workflow_run.conclusion)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: scripts/ci
+      - name: Rerun the failed jobs if they failed on the network
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+        run: bash scripts/ci/retry-flaky.sh "$GITHUB_REPOSITORY" "$RUN_ID"

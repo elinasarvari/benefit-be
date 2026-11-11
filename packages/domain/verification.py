@@ -40,6 +40,12 @@ class MissingDocumentKind(StrEnum):
     stub_too_old = "stub_too_old"
 
 
+class IdentityMatch(StrEnum):
+    match = "match"
+    no_match = "no_match"
+    no_record = "no_record"
+
+
 class Dismissal(_Model):
     reviewer_id: UUID
     reason: str = Field(min_length=1, max_length=REASON_MAX_LENGTH)
@@ -48,13 +54,16 @@ class Dismissal(_Model):
 
 class Finding(_Model):
     """One discrepancy (FR-002-03, FR-002-14, FR-002-24). `finding_id` is derived from the case,
-    cause, member and job, so running the check again gives the same ID (FR-002-23)."""
+    cause, member, job and document, so running the check again gives the same ID (FR-002-23)
+    and two "different person" stubs (no member, no job) still get different IDs.
+    `identity` is set for identity mismatches: `no_match` or `no_record` (FR-002-24)."""
 
     finding_id: UUID
     cause: FindingCause
     member_id: UUID | None = None
     job_id: UUID | None = None
     document_id: UUID | None = None
+    identity: IdentityMatch | None = None
     declared_monthly: Decimal | None = None
     documented_monthly: Decimal | None = None
     conversion: str | None = Field(
@@ -120,12 +129,6 @@ class PayStubDetails(_Model):
     gross_pay: Decimal = Field(gt=0, decimal_places=2)
     pay_date: date
     corrections: list[Correction] = Field(default_factory=list)
-
-
-class IdentityMatch(StrEnum):
-    match = "match"
-    no_match = "no_match"
-    no_record = "no_record"
 
 
 class ReferenceJob(_Model):

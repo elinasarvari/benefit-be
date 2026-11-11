@@ -236,7 +236,8 @@ def test_FR_001_07_registered_workflow_names_match_contract(settings: Settings) 
 
     assert contract["workflow"] <= registered_types
     assert definition.name in contract["workflow"]
-    assert signals == contract["signals"]
+    # 007 adds `applicant_response` (specs/007-redeterminations/contracts/worker.md).
+    assert signals == contract["signals"] | {"applicant_response"}
     assert queries == contract["queries"]
     assert contract["activities"] <= registered_activity_names(settings)
 

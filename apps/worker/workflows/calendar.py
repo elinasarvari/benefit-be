@@ -37,6 +37,11 @@ def case_today_wf(clock: CaseClock) -> date:
 MIN_WAKE = timedelta(seconds=1)
 
 
+def until_case_instant(clock: CaseClock, due: datetime) -> timedelta:
+    """Real time until the case clock reaches `due` (at least `MIN_WAKE`, so a wait never spins)."""
+    return max((due - case_now_wf(clock)) / clock.scale, MIN_WAKE)
+
+
 def until_next_case_day(clock: CaseClock) -> timedelta:
     """Real time until the case clock reaches the next Chicago midnight.
 

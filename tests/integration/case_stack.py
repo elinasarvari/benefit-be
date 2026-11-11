@@ -282,7 +282,9 @@ class WorkerProcess:
 
 
 @asynccontextmanager
-async def worker_process(settings: Settings) -> AsyncIterator[WorkerProcess]:
+async def worker_process(
+    settings: Settings, module: str = "tests.integration.case_worker_process"
+) -> AsyncIterator[WorkerProcess]:
     env = {
         **os.environ,
         "APP_ENV": "test",
@@ -304,7 +306,7 @@ async def worker_process(settings: Settings) -> AsyncIterator[WorkerProcess]:
     process = await asyncio.create_subprocess_exec(
         sys.executable,
         "-m",
-        "tests.integration.case_worker_process",
+        module,
         cwd=REPO_ROOT,
         env=env,
         stdout=subprocess.DEVNULL,

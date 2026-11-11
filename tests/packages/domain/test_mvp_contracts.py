@@ -9,12 +9,20 @@ import pytest
 from pydantic import ValidationError
 
 from packages.domain.case import (
+    CaseChange,
     CaseClock,
+    CaseEvent,
+    CaseEventKind,
     CaseStart,
     CaseState,
     CaseStatus,
     CaseType,
+    CoveragePeriod,
+    CoverageStatus,
+    CoverageStatusChange,
+    EventActorType,
     NoticeType,
+    new_redetermination_case,
     redetermination_case_id,
 )
 from packages.domain.notice import NOTICE_NEEDS_APPROVAL
@@ -92,3 +100,61 @@ def test_FR_011_05_case_status_has_no_pending_timer_by_default() -> None:
         decision_deadline=date(2026, 4, 15),
     )
     assert status.pending_timer is None
+
+
+def _change(household_id: object, prior_household_id: object) -> CaseChange:
+    case_id = uuid4()
+    event = CaseEvent.model_validate(
+        {
+            "_id": uuid4(),
+            "case_id": case_id,
+            "household_id": household_id,
+            "seq": 1,
+            "kind": CaseEventKind.coverage_continued,
+            "case_time": NOW,
+            "real_time": NOW,
+            "actor_type": EventActorType.system,
+            "reason_code": "coverage_end_passed",
+            "created_at": NOW,
+        }
+    )
+    return CaseChange(
+        case_id=case_id,
+        household_id=household_id,
+        seq=1,
+        event=event,
+        prior_coverage=CoverageStatusChange(
+            coverage_period_id=uuid4(),
+            household_id=prior_household_id,
+            status=CoverageStatus.continued_pending_review,
+        ),
+    )
+
+
+def test_FR_007_05_prior_coverage_must_match_change_household() -> None:
+    household = uuid4()
+    assert _change(household, household).prior_coverage is not None
+    with pytest.raises(ValidationError):
+        _change(household, uuid4())
+
+
+def test_FR_007_07_redetermination_case_id_is_stable_per_period() -> None:
+    household = uuid4()
+    period = CoveragePeriod.model_validate(
+        {
+            "_id": uuid4(),
+            "household_id": household,
+            "case_id": uuid4(),
+            "start_date": date(2025, 4, 1),
+            "end_date": date(2026, 3, 31),
+            "status": CoverageStatus.active,
+        }
+    )
+    first = new_redetermination_case(household, period, NOW, 1)
+    again = new_redetermination_case(household, period, NOW, 1)
+    assert (
+        first.id == first.case_id == again.case_id == redetermination_case_id(household, period.id)
+    )
+    assert first.case_type is CaseType.redetermination
+    assert first.coverage_period_id == period.id
+    assert first.decision_deadline == period.end_date

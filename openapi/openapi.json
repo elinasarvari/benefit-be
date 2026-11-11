@@ -185,6 +185,11 @@
               }
             ]
           },
+          "household_id": {
+            "format": "uuid",
+            "title": "Household Id",
+            "type": "string"
+          },
           "open_review_task": {
             "anyOf": [
               {
@@ -245,6 +250,7 @@
           "denial_reason",
           "open_review_task",
           "pending_timer",
+          "household_id",
           "case_type",
           "coverage_period",
           "override",
@@ -261,6 +267,7 @@
           "action_rejected",
           "notice_requested",
           "coverage_started",
+          "coverage_continued",
           "demo_action"
         ],
         "title": "CaseEventKind",
@@ -358,6 +365,89 @@
           "next_cursor"
         ],
         "title": "CaseHistoryPage",
+        "type": "object"
+      },
+      "CaseNoticeList": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "description": "Newest first",
+            "items": {
+              "$ref": "#/components/schemas/CaseNoticeView"
+            },
+            "maxItems": 20,
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "CaseNoticeList",
+        "type": "object"
+      },
+      "CaseNoticeView": {
+        "additionalProperties": false,
+        "description": "A notice of a case as staff see it, including one still waiting for approval (FR-007-03).",
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "delivered_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Delivered At"
+          },
+          "due_case_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due Case Date"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/RequestedItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "notice_id": {
+            "format": "uuid",
+            "title": "Notice Id",
+            "type": "string"
+          },
+          "notice_type": {
+            "$ref": "#/components/schemas/NoticeType"
+          },
+          "status": {
+            "$ref": "#/components/schemas/NoticeStatus"
+          }
+        },
+        "required": [
+          "notice_id",
+          "notice_type",
+          "status",
+          "items",
+          "due_case_date",
+          "created_at",
+          "delivered_at"
+        ],
+        "title": "CaseNoticeView",
         "type": "object"
       },
       "CaseOutcome": {
@@ -1793,6 +1883,14 @@
         "title": "NoticeList",
         "type": "object"
       },
+      "NoticeStatus": {
+        "enum": [
+          "pending_approval",
+          "delivered"
+        ],
+        "title": "NoticeStatus",
+        "type": "string"
+      },
       "NoticeSummary": {
         "additionalProperties": false,
         "properties": {
@@ -2365,7 +2463,8 @@
           "action": {
             "enum": [
               "approve_denial",
-              "override_to_approve"
+              "override_to_approve",
+              "approve"
             ],
             "title": "Action",
             "type": "string"
@@ -2510,7 +2609,8 @@
           "response_deadline",
           "review_reminder",
           "review_escalation",
-          "coverage_end"
+          "coverage_end",
+          "redetermination_response_deadline"
         ],
         "title": "TimerName",
         "type": "string"
@@ -3597,6 +3697,79 @@
         ]
       }
     },
+    "/api/v1/cases/{case_id}/notices": {
+      "get": {
+        "operationId": "listCaseNotices",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "case_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Case Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaseNoticeList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not signed in"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Role not allowed"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not found or not visible to the caller"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "validation_failed"
+          }
+        },
+        "summary": "Notices of a case, including a request waiting for approval (FR-007-03)",
+        "tags": [
+          "cases"
+        ]
+      }
+    },
     "/api/v1/cases/{case_id}/review-tasks/{task_id}/actions": {
       "post": {
         "operationId": "submitReviewAction",
@@ -3862,7 +4035,7 @@
                 }
               }
             },
-            "description": "Not found or not visible to the caller"
+            "description": "not_found: no members"
           },
           "422": {
             "content": {
@@ -3873,16 +4046,6 @@
               }
             },
             "description": "validation_failed"
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            },
-            "description": "not_implemented: the feature has not landed"
           }
         },
         "summary": "Members, coverage periods and cases of a household (FR-007-18)",
@@ -3957,16 +4120,6 @@
             },
             "description": "Role not allowed"
           },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            },
-            "description": "Not found or not visible to the caller"
-          },
           "409": {
             "content": {
               "application/json": {
@@ -3975,7 +4128,7 @@
                 }
               }
             },
-            "description": "No active coverage period with that ID"
+            "description": "no_active_coverage_period | household_has_open_case (the open case_id is in fields; ADR-007-06)"
           },
           "422": {
             "content": {
@@ -3986,16 +4139,6 @@
               }
             },
             "description": "validation_failed"
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            },
-            "description": "not_implemented: the feature has not landed"
           },
           "503": {
             "content": {

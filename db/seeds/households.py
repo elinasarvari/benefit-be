@@ -118,13 +118,25 @@ def _plan(quota: random.Random) -> list[_Plan]:
     medicare = set(quota.sample(range(2, HOUSEHOLD_COUNT), 6))
 
     named: dict[int, str] = {0: "a", 1: "b"}
+    # 007's demo households: eligible on held data, no mismatch, one job (E) or several (F).
+    renewable = [
+        i
+        for i in indices
+        if i >= 2 and kinds[i] == "under" and i not in mismatch | changing | abroad | medicare
+    ]
+    renewal_labels: dict[int, str] = {}
+    for tag, pool in (
+        ("renewal-automatic", [i for i in renewable if i not in multi]),
+        ("renewal-one-document", [i for i in renewable if i in multi]),
+    ):
+        renewal_labels[next(i for i in pool if i not in renewal_labels)] = tag
     for label, pool in (
         ("zero-income", [i for i in indices if kinds[i] == "zero"]),
         ("multi-job", sorted(multi)),
         ("missing-document", [i for i in indices if kinds[i] == "missing"]),
         ("size-change", sorted(changing)),
     ):
-        pick = next((i for i in pool if i not in named), None)
+        pick = next((i for i in pool if i not in named and i not in renewal_labels), None)
         if pick is not None:
             named[pick] = label
 
@@ -152,6 +164,8 @@ def _plan(quota: random.Random) -> list[_Plan]:
             tags.add("new-application")
         if i == 1:
             tags.add("renewal-due")
+        if i in renewal_labels:
+            tags.add(renewal_labels[i])
         named_label = named.get(i)
         key: str
         if i == 0:
@@ -161,6 +175,9 @@ def _plan(quota: random.Random) -> list[_Plan]:
         elif named_label == "missing-document":
             # main's demo household C (applicant3, cannot-determine); ADR-003-07
             household_id, key = HOUSEHOLD_C, "household-c"
+        elif i in renewal_labels:
+            key = f"household-{renewal_labels[i]}"
+            household_id = seeded_id(key)
         elif named_label:
             household_id, key = seeded_id(f"household-{named_label}"), f"household-{named_label}"
         else:

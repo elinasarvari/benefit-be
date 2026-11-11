@@ -13,6 +13,7 @@ from apps.api.dependencies.cases import (
     get_user_names,
 )
 from apps.api.dependencies.db import get_audit_writer, get_clock
+from apps.api.dependencies.households import get_notice_repository
 from apps.api.schemas.cases import (
     CaseDetail,
     CaseHistoryPage,
@@ -21,8 +22,10 @@ from apps.api.schemas.cases import (
     ReviewActionBody,
 )
 from apps.api.schemas.determinations import DeterminationList
+from apps.api.schemas.mvp import CaseNoticeList
 from apps.api.services import cases as cases_service
 from apps.api.services import determinations as determinations_service
+from apps.api.services import notices as notices_service
 from packages.domain.auth import Principal, Role
 from packages.domain.errors import ErrorEnvelope
 from packages.platform.audit import AuditWriter
@@ -166,3 +169,18 @@ async def submit_review_action(
         case_id, task_id, body, principal, workflows=workflows, repo=repo, audit=audit, clock=clock
     )
     return Response(status_code=202)
+
+
+@router.get(
+    "/{case_id}/notices",
+    operation_id="listCaseNotices",
+    responses=COMMON,
+    summary="Notices of a case, including a request waiting for approval (FR-007-03)",
+)
+async def list_case_notices(
+    case_id: UUID,
+    principal: Annotated[Principal, Depends(require_roles(Role.caseworker))],
+    repo: Annotated[cases_service.CaseRepository, Depends(get_case_repository)],
+    notices: Annotated[notices_service.NoticeRepository, Depends(get_notice_repository)],
+) -> CaseNoticeList:
+    return await notices_service.list_case_notices(case_id, principal, cases=repo, notices=notices)

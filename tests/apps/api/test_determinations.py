@@ -257,6 +257,13 @@ def test_FR_003_23_every_audit_action_is_allowed_by_the_audit_log_validator() ->
     baseline = importlib.import_module("db.migrations.versions.0001_baseline")
     eligibility = importlib.import_module("db.migrations.versions.0005_eligibility")
 
-    allowed = {*baseline.AUDIT_ACTIONS, eligibility.DETERMINATIONS_READ}
+    redeterminations = importlib.import_module("db.migrations.versions.0007_redeterminations")
+
+    # 0007 adds the scheduled start (ADR-007-02, Option B).
+    allowed = {
+        *baseline.AUDIT_ACTIONS,
+        eligibility.DETERMINATIONS_READ,
+        redeterminations.NEW_AUDIT_ACTION,
+    }
 
     assert {a.value for a in AuditAction} == allowed

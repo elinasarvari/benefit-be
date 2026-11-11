@@ -127,6 +127,7 @@ async def test_FR_001_24_seed_gives_an_existing_case_a_synthetic_application(
             "households",
             "cases",  # the seeded history cases (003) would also get applications
             "seeded_verifications",
+            "reference_records",
             "household_members",
             "users",
             "applications",

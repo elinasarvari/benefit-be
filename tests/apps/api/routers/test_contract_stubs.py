@@ -40,14 +40,6 @@ STUBS: list[tuple[str, str, Role, tuple[Role, ...], Any]] = [
     ("GET", "/api/v1/me/requests", A, APPLICANT_ONLY, None),
     ("POST", f"/api/v1/me/requests/{ID}/response", A, APPLICANT_ONLY, {}),
     ("POST", f"/api/v1/cases/{ID}/advance-clock", S, (A, C), None),
-    ("GET", f"/api/v1/households/{ID}", C, STAFF_ONLY, None),
-    (
-        "POST",
-        f"/api/v1/households/{ID}/redeterminations",
-        S,
-        STAFF_ONLY,
-        {"coverage_period_id": ID},
-    ),
     ("GET", "/api/v1/metrics?month=2026-03", C, STAFF_ONLY, None),
 ]
 

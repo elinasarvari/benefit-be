@@ -10,7 +10,7 @@ import calendar
 from collections.abc import Iterable
 from datetime import date, timedelta
 
-from packages.domain.case import CaseState, DenialReason
+from packages.domain.case import CaseState, CaseType, DenialReason
 from packages.domain.case import allowed_actions_for as allowed_actions_for  # data table (BA-6)
 from packages.domain.review import ReviewReason
 
@@ -43,8 +43,27 @@ _DENIAL_PRECEDENCE = (
 )
 
 
-def can_transition(from_state: CaseState, to_state: CaseState) -> bool:
+# The request path of a redetermination (007, ADR-007-02) turns on these rows for it alone, so an
+# application behaves exactly as before until 010 and 011 land (research R12).
+REDETERMINATION_TRANSITIONS = frozenset(
+    {
+        (CaseState.under_review, CaseState.awaiting_applicant),
+        (CaseState.awaiting_applicant, CaseState.verifying),
+        (CaseState.awaiting_applicant, CaseState.under_review),
+    }
+)
+
+
+def can_transition(
+    from_state: CaseState,
+    to_state: CaseState,
+    case_type: CaseType = CaseType.application,
+) -> bool:
     """True only for table rows owned by a live feature. `decided` is terminal."""
+    if case_type is CaseType.redetermination and (from_state, to_state) in (
+        REDETERMINATION_TRANSITIONS
+    ):
+        return True
     return TRANSITIONS.get((from_state, to_state)) in ACTIVE_FEATURES
 
 

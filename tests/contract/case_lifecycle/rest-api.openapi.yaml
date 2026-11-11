@@ -138,7 +138,7 @@ components:
       additionalProperties: false
       required: [action, request_id]
       properties:
-        action: {type: string, enum: [approve_denial, override_to_approve]}
+        action: {type: string, enum: [approve, approve_denial, override_to_approve]}
         reason: {type: [string, "null"], maxLength: 500}
         request_id: {type: string, format: uuid}
     CaseStatus:
@@ -171,8 +171,9 @@ components:
       allOf:
         - {$ref: "#/components/schemas/CaseStatus"}
         - type: object
-          required: [case_type, coverage_period, override, demo_clock]
+          required: [household_id, case_type, coverage_period, override, demo_clock]
           properties:
+            household_id: {type: string, format: uuid, description: "007: the household page link"}
             case_type: {type: string, enum: [application, redetermination]}
             coverage_period:
               type: [object, "null"]

@@ -25,3 +25,11 @@ async def test_FR_001_03_case_replay(name: str) -> None:
     replayer = Replayer(workflows=[CaseWorkflow], data_converter=pydantic_data_converter)
 
     await replayer.replay_workflow(history)
+
+
+@pytest.mark.parametrize("name", ["case_approved.json", "case_override.json"])
+async def test_FR_007_08_application_histories_replay_with_patched_hook(name: str) -> None:
+    history = WorkflowHistory.from_json(name, (HISTORIES / name).read_text())
+    replayer = Replayer(workflows=[CaseWorkflow], data_converter=pydantic_data_converter)
+
+    await replayer.replay_workflow(history)

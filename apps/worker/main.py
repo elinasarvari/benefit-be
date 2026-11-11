@@ -18,6 +18,8 @@ from temporalio.worker import Worker
 from apps.worker.activities.agent_step import AgentStepActivities, smoke_tool
 from apps.worker.activities.case_record import CaseRecordActivities
 from apps.worker.activities.determination import DeterminationActivities
+from apps.worker.activities.redeterminations_due import DueRedeterminationActivities
+from apps.worker.activities.renewal import RenewalActivities
 from apps.worker.activities.review_tasks import ReviewTaskActivities
 from apps.worker.activities.smoke import smoke_step
 from apps.worker.activities.snapshot import SnapshotCapture
@@ -26,11 +28,17 @@ from apps.worker.health import WorkerState, worker_checks
 from apps.worker.interceptors import ContextInterceptor
 from apps.worker.repositories.cases import CaseRepository
 from apps.worker.repositories.caseworker_actions import CaseworkerActionRepository
+from apps.worker.repositories.coverage_periods import MongoCaseDates, MongoCoveragePeriods
 from apps.worker.repositories.determinations import MongoDeterminationStore
+from apps.worker.repositories.due_cases import DueCases
+from apps.worker.repositories.notices import MongoNoticeStore
+from apps.worker.repositories.reference_records import MongoReferenceRecords
 from apps.worker.repositories.review_tasks import ReviewTaskRepository
 from apps.worker.repositories.snapshots import MongoSnapshotSource
 from apps.worker.repositories.verified_facts import SeededVerifications
+from apps.worker.schedules import ensure_redeterminations_due_schedule
 from apps.worker.workflows.case import CaseWorkflow
+from apps.worker.workflows.redeterminations_due import RedeterminationsDueWorkflow
 from apps.worker.workflows.smoke import SmokeWorkflow
 from packages.platform.audit import MongoAuditWriter
 from packages.platform.clock import Clock, SystemClock
@@ -65,7 +73,7 @@ async def connect_with_backoff(settings: Settings) -> Client:
 
 # CaseWorkflow replaces 010's ReviewHarnessWorkflow, which stood in for it until 001 landed and
 # is kept for tests only (010 T009, T018; ADR-001-11).
-WORKFLOWS = [SmokeWorkflow, CaseWorkflow]
+WORKFLOWS = [SmokeWorkflow, CaseWorkflow, RedeterminationsDueWorkflow]
 
 
 def review_activities(settings: Settings, mongo: MongoClient, clock: Clock) -> ReviewTaskActivities:
@@ -91,6 +99,26 @@ def determination_activities(
     )
 
 
+def redetermination_activities(
+    settings: Settings, mongo: MongoClient, clock: Clock, audit: MongoAuditWriter
+) -> tuple[RenewalActivities, DueRedeterminationActivities]:
+    """007: the renewal check and request over the reference data set, and the daily scan."""
+    db = settings.MONGO_DB
+    periods = MongoCoveragePeriods(mongo, db)
+    renewal = RenewalActivities(
+        periods,
+        MongoSnapshotSource(mongo, db),
+        MongoReferenceRecords(mongo, db),
+        MongoNoticeStore(mongo, db),
+        MongoCaseDates(mongo, db),
+        clock,
+    )
+    due = DueRedeterminationActivities(
+        periods, DueCases(mongo, db, audit), clock, settings.DEMO_PROFILE
+    )
+    return renewal, due
+
+
 def build_activities(settings: Settings, clock: Clock, mongo: MongoClient) -> list[Any]:
     """Every activity, built once per worker process (TW-12)."""
     agent_steps = AgentStepActivities(settings, clock, smoke_tool(settings, clock))
@@ -99,6 +127,7 @@ def build_activities(settings: Settings, clock: Clock, mongo: MongoClient) -> li
     determination = determination_activities(settings, mongo, clock)
     # 010's review-task activities, for the review loop CaseWorkflow composes (010 T018).
     review = review_activities(settings, mongo, clock)
+    renewal, due = redetermination_activities(settings, mongo, clock, audit)
     return [
         smoke_step,
         agent_steps.run,
@@ -109,6 +138,10 @@ def build_activities(settings: Settings, clock: Clock, mongo: MongoClient) -> li
         review.set_review_flag,
         review.close_review_task,
         review.record_caseworker_action,
+        renewal.check_renewal,
+        renewal.prepare_renewal_request,
+        renewal.deliver_renewal_request,
+        due.open_due_redeterminations,
     ]
 
 
@@ -125,6 +158,11 @@ async def run_worker(settings: Settings) -> None:
             workflows=WORKFLOWS,
             activities=build_activities(settings, SystemClock(), mongo),
             interceptors=[ContextInterceptor()],
+        )
+        await ensure_redeterminations_due_schedule(
+            client,
+            settings.TEMPORAL_TASK_QUEUE,
+            enabled=settings.REDETERMINATION_SCHEDULE_ENABLED,
         )
         state.polling = True
         log.info("worker.started", task_queue=settings.TEMPORAL_TASK_QUEUE)

@@ -1,5 +1,7 @@
 name: Start MongoDB and install the Temporal CLI
-description: MongoDB 8.0 from MongoDB's apt repository, started by `make mongo-up`, plus the pinned Temporal CLI
+description: >-
+  MongoDB (the version pinned as MONGO_VERSION in the Makefile, from MongoDB's own download server
+  and cached, never apt), started by `make mongo-up`, plus the pinned Temporal CLI (cached too)
 inputs:
   working-directory:
     description: Directory of the benefit-be checkout
@@ -7,24 +9,63 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Install MongoDB 8.0
+    - name: Read the pinned MongoDB and Temporal CLI versions
+      id: versions
       shell: bash
       working-directory: ${{ inputs.working-directory }}
       run: |
-        curl -fsSL https://www.mongodb.org/static/pgp/server-8.0.asc \
-          | sudo gpg -o /usr/share/keyrings/mongodb-server-8.0.gpg --dearmor
-        echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-8.0.gpg ] https://repo.mongodb.org/apt/ubuntu noble/mongodb-org/8.0 multiverse" \
-          | sudo tee /etc/apt/sources.list.d/mongodb-org-8.0.list
-        sudo apt-get update
-        sudo apt-get install -y mongodb-org
+        mongo="$(sed -n 's/^MONGO_VERSION := //p' Makefile)"
+        temporal="$(sed -n 's/^TEMPORAL_CLI_VERSION := //p' Makefile)"
+        test -n "$mongo" && test -n "$temporal"
+        echo "mongo=$mongo" >> "$GITHUB_OUTPUT"
+        echo "temporal=$temporal" >> "$GITHUB_OUTPUT"
+
+    # MongoDB: a cached tarball instead of apt, so a slow or unreachable Ubuntu mirror can't stall setup.
+    - name: Cache MongoDB
+      id: mongo-cache
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ~/.local/mongodb
+        key: mongodb-${{ steps.versions.outputs.mongo }}-ubuntu2404-${{ runner.arch }}
+    - name: Download MongoDB
+      if: steps.mongo-cache.outputs.cache-hit != 'true'
+      shell: bash
+      env:
+        VERSION: ${{ steps.versions.outputs.mongo }}
+      run: |
+        name="mongodb-linux-x86_64-ubuntu2404-${VERSION}"
+        curl -fsSL --retry 5 --retry-all-errors --connect-timeout 20 \
+          -o "$RUNNER_TEMP/mongodb.tgz" "https://fastdl.mongodb.org/linux/${name}.tgz"
+        mkdir -p "$HOME/.local/mongodb"
+        tar -xzf "$RUNNER_TEMP/mongodb.tgz" -C "$HOME/.local/mongodb" --strip-components=2 "${name}/bin/mongod"
+    - name: Put MongoDB on PATH
+      shell: bash
+      run: |
+        echo "$HOME/.local/mongodb" >> "$GITHUB_PATH"
+        "$HOME/.local/mongodb/mongod" --version | head -1
+
+    - name: Cache the Temporal CLI
+      id: temporal-cache
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ~/.local/temporal
+        key: temporal-cli-${{ steps.versions.outputs.temporal }}-${{ runner.os }}-${{ runner.arch }}
     - name: Install the Temporal CLI
+      if: steps.temporal-cache.outputs.cache-hit != 'true'
       shell: bash
-      working-directory: ${{ inputs.working-directory }}
+      env:
+        VERSION: ${{ steps.versions.outputs.temporal }}
       run: |
-        version="$(sed -n 's/^TEMPORAL_CLI_VERSION := //p' Makefile)"
-        curl -fsSL "https://github.com/temporalio/cli/releases/download/v${version}/temporal_cli_${version}_linux_amd64.tar.gz" \
-          | sudo tar -xz -C /usr/local/bin temporal
-        temporal --version
+        curl -fsSL --retry 5 --retry-all-errors --connect-timeout 20 -o "$RUNNER_TEMP/temporal.tgz" \
+          "https://github.com/temporalio/cli/releases/download/v${VERSION}/temporal_cli_${VERSION}_linux_amd64.tar.gz"
+        mkdir -p "$HOME/.local/temporal"
+        tar -xzf "$RUNNER_TEMP/temporal.tgz" -C "$HOME/.local/temporal" temporal
+    - name: Put the Temporal CLI on PATH
+      shell: bash
+      run: |
+        echo "$HOME/.local/temporal" >> "$GITHUB_PATH"
+        "$HOME/.local/temporal/temporal" --version
+
     - name: Create .env and start MongoDB
       shell: bash
       working-directory: ${{ inputs.working-directory }}

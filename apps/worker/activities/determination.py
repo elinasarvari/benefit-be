@@ -81,7 +81,7 @@ class DeterminationActivities:
     async def determine_eligibility(self, request: DeterminationRequest) -> Determination:
         warn_if_retrying()  # UNTIL_DONE: the server retries an outage without limit
         scope = Scope.for_worker(request.case_id, request.household_id)
-        snapshot = await self._snapshots.capture(scope, request.as_of_date)
+        snapshot = await self._snapshots.capture(scope, request.as_of_date, request.held_year)
         full = evaluate(snapshot, request.as_of_date)
         determination_id = determination_id_for(request)
         stored = await self._store.insert(

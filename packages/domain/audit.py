@@ -14,6 +14,7 @@ class AuditAction(StrEnum):
     caseworker_action = "caseworker_action"
     demo_clock_action = "demo_clock_action"
     redetermination_started_on_demand = "redetermination_started_on_demand"
+    redetermination_started_by_schedule = "redetermination_started_by_schedule"
     metrics_refreshed = "metrics_refreshed"
     determinations_read = "determinations_read"
 

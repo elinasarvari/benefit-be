@@ -38,6 +38,7 @@ with workflow.unsafe.imports_passed_through():
         decision_deadline,
         denial_reason_for,
     )
+    from apps.worker.workflows.redetermination import PATCH_ID, RedeterminationPath
     from apps.worker.workflows.review import DETERMINATION_REF_KIND
     from packages.domain.case import (
         AllowedActions,
@@ -49,6 +50,7 @@ with workflow.unsafe.imports_passed_through():
         CaseStart,
         CaseState,
         CaseStatus,
+        CaseType,
         CaseUpdate,
         CoveragePeriod,
         CoverageStatus,
@@ -76,6 +78,7 @@ with workflow.unsafe.imports_passed_through():
         ReviewTaskStatus,
     )
     from packages.domain.verification import VerificationRequest, VerificationResult
+    from packages.domain.waits import ApplicantResponseSignal
 
 # Reason codes of events that are not a caseworker action value (enum-backed, FR-001-10). A
 # rejected action's event carries its `RejectionCode` value.
@@ -107,11 +110,20 @@ class CaseWorkflow:
         self._task: ReviewTask | None = None
         self._pending: list[CaseworkerActionSignal] = []
         self._seen_actions: set[UUID] = set()
+        self._responses: list[ApplicantResponseSignal] = []
+        self._path: RedeterminationPath | None = None
 
     # --- Run ---------------------------------------------------------------------------------
 
     @workflow.run
     async def run(self, start: CaseStart) -> CaseStatus:
+        # One patched branch: recorded application histories replay unchanged (TW-7, 007 R12).
+        if start.case_type is CaseType.redetermination and workflow.patched(PATCH_ID):
+            self._path = RedeterminationPath(self)
+            await self._path.run()
+            while self._pending:  # signals that arrived with the deciding one, recorded as rejected
+                await self._reject(self._pending.pop(0), RejectionCode.task_closed)
+            return self._status()
         await self._move(CaseState.verifying, WORKFLOW_STARTED)
         await workflow.execute_activity(
             "verify_documents",
@@ -170,6 +182,18 @@ class CaseWorkflow:
         self._seen_actions.add(request.action_id)
         self._pending.append(request)
 
+    @workflow.signal(name="applicant_response")
+    def applicant_response(self, payload: RawValue) -> None:
+        raw = workflow.payload_converter().from_payload(payload.payload, dict)
+        try:
+            response = ApplicantResponseSignal.model_validate(raw)
+        except ValidationError:
+            workflow.logger.warning("applicant_response.malformed")
+            return
+        if self._state is not CaseState.awaiting_applicant:
+            return  # nothing is waiting for it: not a request for information, or already answered
+        self._responses.append(response)
+
     @workflow.query(name="status")
     def status(self) -> CaseStatus:
         return self._status()
@@ -206,6 +230,7 @@ class CaseWorkflow:
             days_remaining=days_remaining,
             outcome=self._outcome,
             denial_reason=self._denial_reason,
+            pending_timer=self._path.pending_timer() if self._path is not None else None,
             open_review_task=(
                 OpenReviewTask(
                     task_id=task.task_id,
@@ -264,7 +289,7 @@ class CaseWorkflow:
         await workflow.execute_activity("record_case_change", change, **UNTIL_DONE)
 
     async def _move(self, to_state: CaseState, reason_code: str) -> None:
-        if not can_transition(self._state, to_state):
+        if not can_transition(self._state, to_state, self._start.case_type):
             # A programming error: fail the workflow task so a fixed worker can resume it.
             raise RuntimeError(f"illegal transition {self._state} -> {to_state}")
         event = self._event(CaseEventKind.state_changed, reason_code, to_state=to_state)

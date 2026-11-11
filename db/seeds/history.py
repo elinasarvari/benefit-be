@@ -19,7 +19,15 @@ from typing import Any
 from uuid import UUID, uuid5
 
 from db.seeds.households import YEARS, SeededDataset, SeededHousehold, snapshot_for
-from db.seeds.ids import HOUSEHOLD_A, HOUSEHOLD_B, HOUSEHOLD_C, rng, seeded_id
+from db.seeds.ids import (
+    HOUSEHOLD_A,
+    HOUSEHOLD_B,
+    HOUSEHOLD_C,
+    HOUSEHOLD_E,
+    HOUSEHOLD_F,
+    rng,
+    seeded_id,
+)
 from db.seeds.records import to_document
 from packages.domain.auth import Role
 from packages.domain.case import (
@@ -57,7 +65,10 @@ DEMO_WINDOW_DAYS = 90  # coverage ending within this many days of the anchor is 
 REDETERMINATION_LEAD_DAYS = 60  # FR-007-01
 CASEWORKER = seeded_id("user-caseworker1")
 SYNTHETIC_REASON = "SYNTHETIC override: documents reviewed by the seeded caseworker."
-DEMO = frozenset({HOUSEHOLD_A, HOUSEHOLD_B, HOUSEHOLD_C})
+DEMO = frozenset({HOUSEHOLD_A, HOUSEHOLD_B, HOUSEHOLD_C, HOUSEHOLD_E, HOUSEHOLD_F})
+# 007's households E and F: a prior and a current decided case; current coverage ends in the
+# demo window.
+RENEWAL_DECIDED_OFFSETS = {HOUSEHOLD_E: -300, HOUSEHOLD_F: -296}
 
 COLLECTIONS = (
     "cases",
@@ -124,6 +135,10 @@ def _plans(dataset: SeededDataset) -> list[_Plan]:
             current_decided = -270 + (k * 11) % 200
         for label, decided in (("prior", prior_decided), ("current", current_decided)):
             plans.append(_Plan(household, label, decided, k % 6))
+    by_id = {h.household_id: h for h in dataset.households}
+    for household_id, decided in RENEWAL_DECIDED_OFFSETS.items():
+        plans.append(_Plan(by_id[household_id], "prior", decided - 290, 0))
+        plans.append(_Plan(by_id[household_id], "current", decided, 0))
     return plans
 
 

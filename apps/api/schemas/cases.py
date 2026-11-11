@@ -33,6 +33,7 @@ __all__ = [
 ReviewAction = Literal[
     ActionType.approve_denial,
     ActionType.override_to_approve,
+    ActionType.approve,  # a notice_approval task (007, FR-007-03)
 ]
 
 

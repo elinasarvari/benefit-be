@@ -97,6 +97,10 @@ class CaseTransaction(Protocol):
 
     async def insert_application(self, scope: Scope, application: StoredApplication) -> None: ...
 
+    async def write_audit(self, entry: AuditLogEntry, audit: AuditWriter) -> None:
+        """Append `entry` in this transaction, so it commits or aborts with the case change."""
+        ...
+
 
 class CaseRepository(Protocol):
     async def run_in_transaction(self, work: Callable[[CaseTransaction], Awaitable[T]]) -> T: ...
@@ -180,7 +184,7 @@ def status_of(case: Case, task: OpenReviewTask | None, real_now: datetime) -> Ca
     )
 
 
-def _start_of(case: Case) -> CaseStart:
+def start_of(case: Case) -> CaseStart:
     """Built from the stored case, so a retried submission starts the identical workflow."""
     return CaseStart(
         case_id=case.case_id,
@@ -189,6 +193,7 @@ def _start_of(case: Case) -> CaseStart:
         submission_reference=case.submission_reference,
         received_at=case.clock.real_start,
         clock=case.clock,
+        coverage_period_id=case.coverage_period_id,
     )
 
 
@@ -275,7 +280,7 @@ async def submit_application(
         raise
 
     # Started on every call: a retry after Temporal was down starts it; already started = success.
-    await workflows.start(_start_of(case))
+    await workflows.start(start_of(case))
     log.info("case.submitted", created=created)
     return SubmissionResult(status_of(case, None, now), created)
 
@@ -392,6 +397,7 @@ async def get_case_detail(
         )
     return CaseDetail(
         **status.model_dump(),
+        household_id=case.household_id,
         case_type=case.case_type,
         coverage_period=coverage,
         override=override,

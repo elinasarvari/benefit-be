@@ -149,6 +149,9 @@ class MongoCaseTransaction:
             session=self._session,
         )
 
+    async def write_audit(self, entry: AuditLogEntry, audit: AuditWriter) -> None:
+        await audit.write(entry, session=self._session)
+
 
 class MongoCaseRepository:
     def __init__(self, client: Client, db_name: str) -> None:

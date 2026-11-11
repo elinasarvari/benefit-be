@@ -85,13 +85,15 @@ class SnapshotCapture:
         self._verified = verified
         self._clock = clock
 
-    async def capture(self, scope: Scope, as_of_date: date) -> HouseholdSnapshot:
+    async def capture(
+        self, scope: Scope, as_of_date: date, held_year: int | None = None
+    ) -> HouseholdSnapshot:
         if scope.case_id is None or scope.household_id is None:
             raise Forbidden()
         existing = await self._source.snapshot_for(scope, as_of_date)
         if existing is not None:
             return existing
-        stored = await self._source.members_for_year(scope, as_of_date.year)
+        stored = await self._source.members_for_year(scope, held_year or as_of_date.year)
         if stored:
             members = _from_members(stored)
         else:

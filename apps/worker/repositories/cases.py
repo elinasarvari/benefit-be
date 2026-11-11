@@ -106,6 +106,7 @@ class CaseRepository:
             await self._write_review_task(change, scope, session)
             await self._write_action(change, scope, session)
             await self._write_coverage(change, scope, session)
+            await self._write_prior_coverage(change, scope, session)
             await self._write_notice(change, scope, session)
             await self._write_audit(change, session)
 
@@ -166,6 +167,22 @@ class CaseRepository:
     ) -> None:
         if change.coverage is not None:
             await self._upsert(COVERAGE_PERIODS, to_bson(change.coverage), scope, session)
+
+    async def _write_prior_coverage(
+        self, change: CaseChange, scope: Scope, session: AsyncClientSession
+    ) -> None:
+        """The period a redetermination renews, ends or continues (ADR-007-03): set by status, so
+        a retry of the same change writes the same value."""
+        prior = change.prior_coverage
+        if prior is None:
+            return
+        if prior.household_id != scope.household_id:
+            raise Forbidden()
+        await self._db[COVERAGE_PERIODS].update_one(
+            scoped_filter(scope, COVERAGE_PERIODS, {"_id": prior.coverage_period_id}),
+            {"$set": {"status": prior.status.value}},
+            session=session,
+        )
 
     async def _write_notice(
         self, change: CaseChange, scope: Scope, session: AsyncClientSession

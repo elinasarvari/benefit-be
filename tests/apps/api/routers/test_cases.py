@@ -286,6 +286,7 @@ def test_FR_001_27_case_detail_is_a_superset_of_case_status(harness: CaseApiHarn
 
     assert body["case_type"] == "application"
     assert body["coverage_period"] is None and body["override"] is None
+    assert body["household_id"] == str(case.household_id)
     assert body["demo_clock"] is False
     assert body["days_remaining"] == 42
 

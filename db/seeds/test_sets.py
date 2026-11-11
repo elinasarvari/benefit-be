@@ -19,8 +19,10 @@ from typing import Any
 from db.seeds.history import History
 from db.seeds.households import SeededDataset, StubDocument, snapshot_for
 from db.seeds.ids import SEED
+from db.seeds.renewals import reference_answers
 from packages.domain.case import DeterminationOutcome
 from packages.rules import evaluate
+from packages.rules.renewal import renewal_items
 
 KNOWN_ANSWERS = Path(__file__).resolve().parent / "data" / "known_answers.json"
 EXTRACTION_STUBS = 15  # FR-003-13: 10 to 20
@@ -75,13 +77,18 @@ def pay_stub_items(dataset: SeededDataset) -> list[dict[str, Any]]:
 
 
 def redetermination_items(dataset: SeededDataset, history: History) -> list[dict[str, Any]]:
-    """Active coverage ending in the demo window; the path follows the engine at the start date."""
+    """Active coverage ending in the demo window. The path is automatic only when the engine finds
+    the household eligible at the start date and the reference lookup agrees with held data
+    (FR-007-13); a household with no reference records has no identity match, so it is asked."""
+    answers = reference_answers(dataset)
     items = []
     for due in sorted(history.due, key=lambda d: str(d["coverage_period_id"])):
         start: date = due["redetermination_start"]
         year = start.year if start.year in (2025, 2026) else 2026
         result = evaluate(snapshot_for(due["household"], year, as_of_date=start), start)
-        automatic = result.result is DeterminationOutcome.eligible
+        held = due["household"].years[year].members
+        out_of_date = renewal_items(held, answers.get(due["household_id"], []))
+        automatic = result.result is DeterminationOutcome.eligible and not out_of_date
         items.append(
             {
                 "household_id": str(due["household_id"]),
@@ -89,6 +96,9 @@ def redetermination_items(dataset: SeededDataset, history: History) -> list[dict
                 "coverage_end": due["coverage_end"].isoformat(),
                 "redetermination_start": start.isoformat(),
                 "expected_path": "renew_automatically" if automatic else "ask_applicant",
+                "tags": sorted(
+                    due["household"].scenarios & {"renewal-automatic", "renewal-one-document"}
+                ),
             }
         )
     return items

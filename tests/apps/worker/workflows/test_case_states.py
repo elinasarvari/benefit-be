@@ -102,8 +102,8 @@ def test_FR_001_07_allowed_actions_for_001_review_reasons() -> None:
 
     assert allowed_actions_for(ReviewReason.adverse_determination) == both
     assert allowed_actions_for(ReviewReason.cannot_determine) == both
+    assert allowed_actions_for(ReviewReason.notice_approval) == [ActionType.approve]
     for reason in (
-        ReviewReason.notice_approval,
         ReviewReason.verification_review,
         ReviewReason.missed_response_deadline,
         ReviewReason.explanation_review,

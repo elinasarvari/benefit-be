@@ -24,7 +24,7 @@ from packages.domain.case import (
     Relationship,
 )
 from packages.domain.explanation import DecisionExplanation
-from packages.domain.notice import RequestedItem
+from packages.domain.notice import NoticeStatus, RequestedItem
 from packages.domain.verification import PayStubDetails, VerificationResult
 
 MAX_UPLOAD_BYTES = 10 * 1024 * 1024  # FR-002-17
@@ -175,6 +175,22 @@ class RedeterminationStart(_Body):
 class RedeterminationStarted(_Response):
     case_id: UUID
     created: bool = Field(description="false when one was already running for the period")
+
+
+class CaseNoticeView(_Response):
+    """A notice of a case as staff see it, including one still waiting for approval (FR-007-03)."""
+
+    notice_id: UUID
+    notice_type: NoticeType
+    status: NoticeStatus
+    items: list[RequestedItem]
+    due_case_date: date | None
+    created_at: datetime
+    delivered_at: datetime | None
+
+
+class CaseNoticeList(_Response):
+    items: list[CaseNoticeView] = Field(max_length=20, description="Newest first")
 
 
 # --- 008: program metrics -------------------------------------------------------------------------

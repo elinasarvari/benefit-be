@@ -104,6 +104,9 @@ class FakeCaseRepository:
         self.cases[case.id] = case
         self.inserts += 1
 
+    async def write_audit(self, entry: AuditLogEntry, audit: AuditWriter) -> None:
+        await audit.write(entry)
+
     async def insert_application(self, scope: Scope, application: StoredApplication) -> None:
         if not _visible(scope, application.household_id):
             raise Forbidden()

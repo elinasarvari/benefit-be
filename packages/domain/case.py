@@ -11,6 +11,7 @@ from decimal import Decimal
 from enum import StrEnum
 from typing import Literal, Self
 from uuid import UUID, uuid5
+from zoneinfo import ZoneInfo
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -89,6 +90,7 @@ class CaseEventKind(StrEnum):
     action_rejected = "action_rejected"
     notice_requested = "notice_requested"
     coverage_started = "coverage_started"
+    coverage_continued = "coverage_continued"  # coverage end passed during a redetermination
     demo_action = "demo_action"
 
 
@@ -142,6 +144,8 @@ CASE_WORKFLOW_ACTIONS: dict[ReviewReason, tuple[ActionType, ...]] = {
         ActionType.approve_denial,
         ActionType.override_to_approve,
     ),
+    # The redetermination's request for information waits for approval (FR-007-03).
+    ReviewReason.notice_approval: (ActionType.approve,),
 }
 
 
@@ -212,6 +216,8 @@ class Case(_Document):
     denial_reason: DenialReason | None = None
     override: CaseOverride | None = None
     decided_on: date | None = None
+    # The coverage period a redetermination renews (FR-007-05); None for an application.
+    coverage_period_id: UUID | None = None
     last_seq: int = Field(default=0, ge=0)
     created_at: datetime
     updated_at: datetime
@@ -242,6 +248,16 @@ class CoveragePeriod(_Document):
     start_date: date
     end_date: date
     status: CoverageStatus
+    # The period this one follows, set when a redetermination renews coverage (FR-007-05).
+    renews_coverage_period_id: UUID | None = None
+
+
+class CoverageStatusChange(_Model):
+    """A new status for an existing coverage period, written with the case change (ADR-007-03)."""
+
+    coverage_period_id: UUID
+    household_id: UUID
+    status: CoverageStatus
 
 
 class NoticeRequest(_Document):
@@ -268,6 +284,7 @@ class DeterminationRequest(_Model):
     case_id: UUID
     household_id: UUID
     as_of_date: date
+    held_year: int | None = None  # read the held member data of this year (a redetermination, 007)
 
 
 class CaseUpdate(_Model):
@@ -293,6 +310,7 @@ class CaseChange(_Model):
     action: CaseworkerAction | None = None
     coverage: CoveragePeriod | None = None
     notice: NoticeRequest | None = None
+    prior_coverage: CoverageStatusChange | None = None
 
     @model_validator(mode="after")
     def _parts_belong_to_case(self) -> Self:
@@ -304,7 +322,37 @@ class CaseChange(_Model):
                 part.case_id != self.case_id or part.household_id != self.household_id
             ):
                 raise ValueError("every part must belong to the same case and household")
+        if (
+            self.prior_coverage is not None
+            and self.prior_coverage.household_id != self.household_id
+        ):
+            raise ValueError("prior_coverage must belong to the same household")
         return self
+
+
+def new_redetermination_case(
+    household_id: UUID, period: CoveragePeriod, now: datetime, scale: int
+) -> Case:
+    """The case of a coverage period's redetermination. One ID per household and period, so the
+    API start and the daily schedule open the same case (FR-007-07). The deadline is the renewed
+    period's end; there is no 45-day clock (FR-007-08, ADR-007-03)."""
+    case_id = redetermination_case_id(household_id, period.id)
+    clock = CaseClock(real_start=now, case_start=now, scale=scale)
+    return Case(
+        id=case_id,
+        case_id=case_id,
+        household_id=household_id,
+        case_type=CaseType.redetermination,
+        submission_reference=str(period.id),
+        state=CaseState.submitted,
+        open=True,
+        received_on=now.astimezone(ZoneInfo("America/Chicago")).date(),
+        decision_deadline=period.end_date,
+        clock=clock,
+        coverage_period_id=period.id,
+        created_at=now,
+        updated_at=now,
+    )
 
 
 class OpenReviewTask(_Model):
@@ -469,6 +517,7 @@ class OverrideSummary(_Model):
 
 
 class CaseDetail(CaseStatus):
+    household_id: UUID  # the household page link on the case page (007, ADR-007-06)
     case_type: CaseType
     coverage_period: CoverageSummary | None = None
     override: OverrideSummary | None = None

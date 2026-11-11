@@ -80,6 +80,7 @@ class Settings(BaseSettings):
     TEMPORAL_ADDRESS: str = "localhost:7233"
     TEMPORAL_NAMESPACE: str = "default"
     TEMPORAL_TASK_QUEUE: str = "benefit-case"
+    REDETERMINATION_SCHEDULE_ENABLED: bool = True
     HTTP_TIMEOUT_SECONDS: float = Field(default=10, gt=0)
     HTTP_MAX_ATTEMPTS: int = Field(default=3, ge=1, le=5)
 

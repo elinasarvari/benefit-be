@@ -17,6 +17,11 @@ class TimerName(StrEnum):
     review_reminder = "review_reminder"  # FR-010-02
     review_escalation = "review_escalation"  # FR-010-02
     coverage_end = "coverage_end"  # escalates an open redetermination review (FR-007-14)
+    # 30 case days after the redetermination request is delivered (FR-007-03, FR-007-11)
+    redetermination_response_deadline = "redetermination_response_deadline"
+
+
+REDETERMINATION_RESPONSE_DAYS = 30
 
 
 class _Contract(BaseModel):

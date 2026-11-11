@@ -33,3 +33,5 @@ def seeded_id(name: str) -> uuid.UUID:
 HOUSEHOLD_A = seeded_id("household-a")
 HOUSEHOLD_B = seeded_id("household-b")
 HOUSEHOLD_C = seeded_id("household-c")
+HOUSEHOLD_E = seeded_id("household-renewal-automatic")  # 007 demo: renews automatically
+HOUSEHOLD_F = seeded_id("household-renewal-one-document")  # 007 demo: one document requested

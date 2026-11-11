@@ -156,3 +156,14 @@ async def test_FR_003_19_captured_snapshot_contains_no_member_names() -> None:
     assert "SYNTH-GIVEN" not in text
     assert "SYNTH-FAMILY" not in text
     assert "given_name" not in text and "family_name" not in text
+
+
+async def test_FR_007_04_held_year_reads_that_years_members_across_a_year_change() -> None:
+    """A December request answered in January is determined on the held member data (FR-007-04)."""
+    source = FakeSource(members=[stored_member(year=2026)])
+    as_of = date(AS_OF.year + 1, 1, 2)
+
+    pinned = await capture(source, FakeVerified()).capture(scope(), as_of, held_year=2026)
+
+    assert [m.member_id for m in pinned.members] == [SELF_ID]
+    assert pinned.as_of_date == as_of

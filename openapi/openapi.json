@@ -1209,7 +1209,7 @@
       },
       "Finding": {
         "additionalProperties": false,
-        "description": "One discrepancy (FR-002-03, FR-002-14, FR-002-24). `finding_id` is derived from the case,\ncause, member and job, so running the check again gives the same ID (FR-002-23).",
+        "description": "One discrepancy (FR-002-03, FR-002-14, FR-002-24). `finding_id` is derived from the case,\ncause, member, job and document, so running the check again gives the same ID (FR-002-23)\nand two \"different person\" stubs (no member, no job) still get different IDs.\n`identity` is set for identity mismatches: `no_match` or `no_record` (FR-002-24).",
         "properties": {
           "cause": {
             "$ref": "#/components/schemas/FindingCause"
@@ -1275,6 +1275,16 @@
             "format": "uuid",
             "title": "Finding Id",
             "type": "string"
+          },
+          "identity": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IdentityMatch"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "job_id": {
             "anyOf": [
@@ -1500,6 +1510,15 @@
         "title": "HouseholdView",
         "type": "object"
       },
+      "IdentityMatch": {
+        "enum": [
+          "match",
+          "no_match",
+          "no_record"
+        ],
+        "title": "IdentityMatch",
+        "type": "string"
+      },
       "IllinoisAddress": {
         "additionalProperties": false,
         "properties": {
@@ -1665,7 +1684,7 @@
             "type": "array"
           },
           "month": {
-            "pattern": "^\\d{4}-\\d{2}$",
+            "pattern": "^\\d{4}-(0[1-9]|1[0-2])$",
             "title": "Month",
             "type": "string"
           }
@@ -4406,7 +4425,7 @@
             "name": "month",
             "required": true,
             "schema": {
-              "pattern": "^\\d{4}-\\d{2}$",
+              "pattern": "^\\d{4}-(0[1-9]|1[0-2])$",
               "title": "Month",
               "type": "string"
             }

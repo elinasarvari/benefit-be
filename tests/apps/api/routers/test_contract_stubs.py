@@ -24,27 +24,31 @@ PAY_STUB = {
     "size_bytes": 1024,
 }
 
-# (method, path, allowed role, refused role, JSON body or raw bytes)
-STUBS: list[tuple[str, str, Role, Role, Any]] = [
-    ("POST", f"/api/v1/cases/{ID}/documents", Role.applicant, Role.caseworker, PAY_STUB),
-    ("PUT", f"/api/v1/cases/{ID}/documents/{ID}/content", Role.applicant, Role.caseworker, b"%PDF"),
-    ("GET", f"/api/v1/cases/{ID}/verification", Role.caseworker, Role.applicant, None),
-    ("GET", f"/api/v1/cases/{ID}/explanations", Role.caseworker, Role.applicant, None),
-    ("GET", "/api/v1/me/history", Role.applicant, Role.caseworker, None),
-    ("GET", "/api/v1/me/notices", Role.applicant, Role.caseworker, None),
-    ("GET", f"/api/v1/me/notices/{ID}", Role.applicant, Role.caseworker, None),
-    ("GET", "/api/v1/me/requests", Role.applicant, Role.caseworker, None),
-    ("POST", f"/api/v1/me/requests/{ID}/response", Role.applicant, Role.caseworker, {}),
-    ("POST", f"/api/v1/cases/{ID}/advance-clock", Role.supervisor, Role.caseworker, None),
-    ("GET", f"/api/v1/households/{ID}", Role.caseworker, Role.applicant, None),
+A, C, S = Role.applicant, Role.caseworker, Role.supervisor
+APPLICANT_ONLY = (C, S)
+STAFF_ONLY = (A,)
+
+# (method, path, allowed role, every refused role, JSON body or raw bytes)
+STUBS: list[tuple[str, str, Role, tuple[Role, ...], Any]] = [
+    ("POST", f"/api/v1/cases/{ID}/documents", A, APPLICANT_ONLY, PAY_STUB),
+    ("PUT", f"/api/v1/cases/{ID}/documents/{ID}/content", A, APPLICANT_ONLY, b"%PDF"),
+    ("GET", f"/api/v1/cases/{ID}/verification", C, STAFF_ONLY, None),
+    ("GET", f"/api/v1/cases/{ID}/explanations", C, STAFF_ONLY, None),
+    ("GET", "/api/v1/me/history", A, APPLICANT_ONLY, None),
+    ("GET", "/api/v1/me/notices", A, APPLICANT_ONLY, None),
+    ("GET", f"/api/v1/me/notices/{ID}", A, APPLICANT_ONLY, None),
+    ("GET", "/api/v1/me/requests", A, APPLICANT_ONLY, None),
+    ("POST", f"/api/v1/me/requests/{ID}/response", A, APPLICANT_ONLY, {}),
+    ("POST", f"/api/v1/cases/{ID}/advance-clock", S, (A, C), None),
+    ("GET", f"/api/v1/households/{ID}", C, STAFF_ONLY, None),
     (
         "POST",
         f"/api/v1/households/{ID}/redeterminations",
-        Role.supervisor,
-        Role.applicant,
+        S,
+        STAFF_ONLY,
         {"coverage_period_id": ID},
     ),
-    ("GET", "/api/v1/metrics?month=2026-03", Role.caseworker, Role.applicant, None),
+    ("GET", "/api/v1/metrics?month=2026-03", C, STAFF_ONLY, None),
 ]
 
 
@@ -58,7 +62,12 @@ def _send(harness: CaseApiHarness, method: str, path: str, body: Any) -> Any:
 
 @pytest.mark.parametrize(("method", "path", "allowed", "refused", "body"), STUBS)
 def test_mvp_contract_stub_answers_not_implemented_for_its_role(
-    settings: Settings, method: str, path: str, allowed: Role, refused: Role, body: Any
+    settings: Settings,
+    method: str,
+    path: str,
+    allowed: Role,
+    refused: tuple[Role, ...],
+    body: Any,
 ) -> None:
     harness = CaseApiHarness(settings)
     harness.sign_in(allowed)
@@ -66,11 +75,13 @@ def test_mvp_contract_stub_answers_not_implemented_for_its_role(
     assert response.status_code == 501, response.text
     assert response.json()["error"]["code"] == ErrorCode.not_implemented.value
 
-    harness.sign_in(refused)
-    assert _send(harness, method, path, body).status_code == 403
+    for role in refused:
+        harness.sign_in(role)
+        assert _send(harness, method, path, body).status_code == 403, role
 
 
 def test_mvp_metrics_month_must_be_year_and_month(settings: Settings) -> None:
     harness = CaseApiHarness(settings)
     harness.sign_in(Role.supervisor)
-    assert harness.client.get("/api/v1/metrics?month=March").status_code == 422
+    for month in ("March", "2026-13", "2026-00"):
+        assert harness.client.get(f"/api/v1/metrics?month={month}").status_code == 422, month

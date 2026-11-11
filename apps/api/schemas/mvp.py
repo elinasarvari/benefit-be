@@ -202,5 +202,5 @@ class MetricValue(_Response):
 class MetricsReport(_Response):
     """FR-008-09: metric values only, no names or identifiers."""
 
-    month: str = Field(pattern=r"^\d{4}-\d{2}$")
+    month: str = Field(pattern=r"^\d{4}-(0[1-9]|1[0-2])$")
     metrics: list[MetricValue]

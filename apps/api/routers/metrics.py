@@ -22,6 +22,6 @@ router = APIRouter(tags=["metrics"])
 )
 async def get_program_metrics(
     principal: Annotated[Principal, Depends(require_roles(Role.caseworker))],
-    month: Annotated[str, Query(pattern=r"^\d{4}-\d{2}$")],
+    month: Annotated[str, Query(pattern=r"^\d{4}-(0[1-9]|1[0-2])$")],
 ) -> MetricsReport:
     not_built()

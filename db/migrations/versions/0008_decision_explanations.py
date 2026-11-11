@@ -1,4 +1,4 @@
-"""Decision explanations: the document validator (feature 004a, ADR-004-02, FR-004-13).
+"""Decision explanations: the document validator (feature 004, ADR-004-02, FR-004-13).
 
 Replaces the minimal validator 0006 gave `decision_explanations` with the stored document of
 `packages/domain/explanation.py`: `text` 1..10 000 characters, `audience` and `result` from their

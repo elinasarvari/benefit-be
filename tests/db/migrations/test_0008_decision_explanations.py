@@ -1,4 +1,4 @@
-"""Migration 0007: the `decision_explanations` validator and index (FR-004-13, ADR-004-02)."""
+"""Migration 0008: the `decision_explanations` validator and index (FR-004-13, ADR-004-02)."""
 
 from __future__ import annotations
 

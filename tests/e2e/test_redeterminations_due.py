@@ -82,7 +82,7 @@ async def _trigger_and_collect() -> tuple[list[tuple[UUID, UUID]], list[str]]:
 
 
 @pytest.mark.asyncio
-async def test_FR_007_01_triggered_schedule_starts_every_active_period_ending_within_60_days() -> None:
+async def test_FR_007_01_triggered_schedule_starts_every_active_period_ending_within_60_days() -> None:  # noqa: E501
     """FR-007-01: triggered schedule starts every active period ending within 60 days."""
     due, missing = await _trigger_and_collect()
 

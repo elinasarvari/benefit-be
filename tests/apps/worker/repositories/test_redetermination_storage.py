@@ -99,8 +99,8 @@ async def test_FR_007_05_renew_writes_new_period_and_prior_status_in_one_transac
     repository = CaseRepository(client, integration_settings.MONGO_DB, audit)
 
     # Aborts: the prior period belongs to another household, so nothing at all is written.
-    change = renewal_change(case_id, household_id, prior, other_household=True)
     with pytest.raises(Exception):  # noqa: B017, PT011
+        change = renewal_change(case_id, household_id, prior, other_household=True)
         await repository.apply(change, scope_of(change))
     assert await db["coverage_periods"].count_documents({"case_id": case_id}) == 0
     assert await db["case_events"].count_documents({"case_id": case_id}) == 0

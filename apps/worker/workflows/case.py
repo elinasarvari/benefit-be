@@ -60,8 +60,6 @@ with workflow.unsafe.imports_passed_through():
         NoticeRequest,
         NoticeType,
         OpenReviewTask,
-        VerificationOutcome,
-        VerificationRequest,
     )
     from packages.domain.review import (
         BLOCKING,
@@ -77,6 +75,7 @@ with workflow.unsafe.imports_passed_through():
         ReviewTask,
         ReviewTaskStatus,
     )
+    from packages.domain.verification import VerificationRequest, VerificationResult
 
 # Reason codes of events that are not a caseworker action value (enum-backed, FR-001-10). A
 # rejected action's event carries its `RejectionCode` value.
@@ -116,8 +115,12 @@ class CaseWorkflow:
         await self._move(CaseState.verifying, WORKFLOW_STARTED)
         await workflow.execute_activity(
             "verify_documents",
-            VerificationRequest(case_id=start.case_id, household_id=start.household_id),
-            result_type=VerificationOutcome,
+            VerificationRequest(
+                case_id=start.case_id,
+                household_id=start.household_id,
+                as_of_date=self._received_on,
+            ),
+            result_type=VerificationResult,
             **AGENT_STEP,
         )
         # 002, 010 and 011 add the needs-review and missing-document branches (TW-7: patched).

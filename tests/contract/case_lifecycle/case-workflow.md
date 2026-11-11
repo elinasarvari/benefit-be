@@ -28,7 +28,7 @@ Reserved for later features (names fixed now): `applicant_response` (011), `adva
 | Name | Input → Output | Options (`apps/worker/policies.py`) | Owner of the body |
 |---|---|---|---|
 | `record_case_change` | `CaseChange` → `None` | `UNTIL_DONE` | Workflows (calls `apps/worker/repositories/cases.py`, per `database.md` scope line) |
-| `verify_documents` | `VerificationRequest {case_id, household_id}` → `VerificationOutcome {complete: bool, needs_review: bool}` | `AGENT_STEP` | stub in 001; 002 replaces |
+| `verify_documents` | `VerificationRequest {case_id, household_id, as_of_date}` → `VerificationResult {complete, needs_review, case_id, identity_verified, findings, missing_items}` (`packages/domain/verification.py`) | `AGENT_STEP` | stub in 001; 002 replaces |
 | `determine_eligibility` | `DeterminationRequest {case_id, household_id, as_of_date}` → `Determination` (minimal) | `UNTIL_DONE` | stub in 001; 003 replaces |
 
 `UNTIL_DONE` retries without limit on the server (exponential backoff capped at 5 minutes, a 30-second timeout per attempt, `NON_RETRYABLE_ERRORS` not retried), so an outage neither fails the case nor grows its history; a workflow cancel cancels the activity. All activities are idempotent (TW-11): `record_case_change` by `(case_id, seq)` and deterministic `_id`s; the stubs are pure.

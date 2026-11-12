@@ -21,6 +21,7 @@ def error_response(
     message: str | None = None,
     fields: list[FieldError] | None = None,
     related_case_id: UUID | None = None,
+    status: int | None = None,
 ) -> JSONResponse:
     envelope = ErrorEnvelope(
         error=ErrorBody(
@@ -33,7 +34,7 @@ def error_response(
     )
     return JSONResponse(
         envelope.model_dump(mode="json"),
-        status_code=STATUS_FOR_CODE[code],
+        status_code=status or STATUS_FOR_CODE[code],
         headers={"X-Request-ID": reference_id},
     )
 
@@ -67,6 +68,7 @@ def register_error_handlers(app: FastAPI) -> None:
             message=exc.message,
             fields=exc.fields,
             related_case_id=exc.related_case_id,
+            status=exc.http_status,
         )
 
     @app.exception_handler(RequestValidationError)

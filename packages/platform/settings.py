@@ -123,6 +123,10 @@ class Settings(BaseSettings):
     # Applicant waits (case-clock days, FR-011-01, FR-011-04)
     RESPONSE_WINDOW_DAYS: int = Field(default=15, ge=1)
 
+    # Pay stubs (002): uploaded files and the income check's tolerance (ADR-002-02, ADR-002-03)
+    BLOB_DIR: str = ".data/blobs"
+    INCOME_MISMATCH_THRESHOLD_PERCENT: Decimal = Field(default=Decimal(10), gt=0, le=100)
+
     @model_validator(mode="before")
     @classmethod
     def _environment_defaults(cls, data: dict[str, Any]) -> dict[str, Any]:

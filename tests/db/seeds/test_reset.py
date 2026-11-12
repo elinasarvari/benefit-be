@@ -7,7 +7,15 @@ import pytest
 
 from db.seeds.generate import application_documents, household_documents
 from db.seeds.households import build_dataset
-from db.seeds.ids import HOUSEHOLD_A, HOUSEHOLD_B, HOUSEHOLD_C, SEED, SEED_ANCHOR_DATE, seeded_id
+from db.seeds.ids import (
+    HOUSEHOLD_A,
+    HOUSEHOLD_B,
+    HOUSEHOLD_C,
+    HOUSEHOLD_D,
+    SEED,
+    SEED_ANCHOR_DATE,
+    seeded_id,
+)
 from db.seeds.reset import ResetRefused, guard, reset
 from db.seeds.users import DEMO_ACCOUNTS
 from packages.platform.settings import Settings
@@ -29,7 +37,7 @@ async def test_FR_000_02_reset_restores_seeded_counts_and_markers(
         ids = {doc["_id"] async for doc in db["households"].find({}, {"_id": 1})}
         marker = await db["_meta"].find_one({"_id": "dataset"})
     assert len(ids) == 200
-    assert {HOUSEHOLD_A, HOUSEHOLD_B, HOUSEHOLD_C} <= ids
+    assert {HOUSEHOLD_A, HOUSEHOLD_B, HOUSEHOLD_C, HOUSEHOLD_D} <= ids
     assert marker is not None
     assert marker["synthetic"] is True
 
@@ -37,10 +45,11 @@ async def test_FR_000_02_reset_restores_seeded_counts_and_markers(
 def test_FR_003_14_households_carry_no_stub_result_and_demo_applicants_link_to_a_b_c() -> None:
     # Replaces the 001 stub-result test: the real engine decides now and `stub_result` and
     # `household_stub_results` are gone (ADR-003-03, ADR-003-04, T011/T012). A, B and C stay
-    # three of the 200 generated households and the three applicant demo users' households.
+    # three of the 200 generated households and applicant demo users' households; D (applicant4,
+    # 002) is the fourth, a clean eligible household for the pay stub submission journey.
     documents = household_documents(build_dataset(SEED_ANCHOR_DATE))
 
-    synthetic_ids = {seeded_id(f"household-{name}") for name in ("a", "b", "c")}
+    synthetic_ids = {seeded_id(f"household-{name}") for name in ("a", "b", "c", "d")}
     assert len(documents) == 200
     assert synthetic_ids <= {doc["_id"] for doc in documents}
     assert all(
@@ -127,6 +136,7 @@ async def test_FR_001_24_seed_gives_an_existing_case_a_synthetic_application(
             "households",
             "cases",  # the seeded history cases (003) would also get applications
             "seeded_verifications",
+            "reference_records",  # seeded since 002 (S-01); seed() inserts them again
             "household_members",
             "users",
             "applications",

@@ -657,10 +657,57 @@
         "title": "CitizenshipStatus",
         "type": "string"
       },
+      "CorrectedValue": {
+        "additionalProperties": false,
+        "properties": {
+          "field_ref": {
+            "title": "Field Ref",
+            "type": "string"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "required": [
+          "field_ref",
+          "value"
+        ],
+        "title": "CorrectedValue",
+        "type": "object"
+      },
       "Correction": {
         "additionalProperties": false,
         "description": "A caseworker's correction of one entered detail (FR-002-19).",
         "properties": {
+          "action_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Action Id"
+          },
           "corrected_at": {
             "format": "date-time",
             "title": "Corrected At",
@@ -2365,10 +2412,34 @@
           "action": {
             "enum": [
               "approve_denial",
-              "override_to_approve"
+              "override_to_approve",
+              "correct_value",
+              "dismiss_finding"
             ],
             "title": "Action",
             "type": "string"
+          },
+          "corrected_value": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CorrectedValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "finding_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finding Id"
           },
           "reason": {
             "anyOf": [
@@ -3250,7 +3321,7 @@
                 }
               }
             },
-            "description": "Role not allowed"
+            "description": "Role not allowed, or another household's case"
           },
           "404": {
             "content": {
@@ -3271,16 +3342,6 @@
               }
             },
             "description": "validation_failed"
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            },
-            "description": "not_implemented: the feature has not landed"
           }
         },
         "summary": "Record a pay stub's typed details; the file follows to .../content (FR-002-21)",
@@ -3359,7 +3420,7 @@
                 }
               }
             },
-            "description": "Role not allowed"
+            "description": "Role not allowed, or another household's case"
           },
           "404": {
             "content": {
@@ -3400,16 +3461,6 @@
               }
             },
             "description": "validation_failed"
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            },
-            "description": "not_implemented: the feature has not landed"
           }
         },
         "summary": "Upload the file of a recorded pay stub: PDF, PNG or JPEG, up to 10 MB (FR-002-17)",
@@ -3747,7 +3798,7 @@
                 }
               }
             },
-            "description": "Role not allowed"
+            "description": "Role not allowed, or another household's case"
           },
           "404": {
             "content": {
@@ -3768,16 +3819,6 @@
               }
             },
             "description": "validation_failed"
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            },
-            "description": "not_implemented: the feature has not landed"
           }
         },
         "summary": "Documents, entered details and findings of a case (FR-002-18)",

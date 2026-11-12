@@ -15,7 +15,7 @@ import pytest
 
 from db.seeds.generate import GENERATED_DIR
 from db.seeds.households import YEARS, build_dataset
-from db.seeds.ids import HOUSEHOLD_A, HOUSEHOLD_B, HOUSEHOLD_C
+from db.seeds.ids import HOUSEHOLD_A, HOUSEHOLD_B, HOUSEHOLD_C, HOUSEHOLD_D
 from packages.domain.eligibility import RuleId, RuleOutcome
 from packages.domain.household import (
     HouseholdSnapshot,
@@ -57,7 +57,7 @@ SEEDED_COLLECTIONS = [
     "applications",
     "_meta",
 ]
-DEMO = [HOUSEHOLD_A, HOUSEHOLD_B, HOUSEHOLD_C]
+DEMO = [HOUSEHOLD_A, HOUSEHOLD_B, HOUSEHOLD_C, HOUSEHOLD_D]
 
 
 def _load(name: str) -> dict[str, Any]:
@@ -180,7 +180,8 @@ async def test_FR_003_14_demo_households_evaluate_eligible_ineligible_income_can
             )
             results[household_id] = evaluate(snapshot, anchor)
 
-    eligible, ineligible, undecided = (results[h] for h in DEMO)
+    eligible, ineligible, undecided, plain = (results[h] for h in DEMO)
+    assert plain.result.value == "eligible"  # D: the clean eligible household (applicant4)
     assert eligible.result.value == "eligible"
     assert ineligible.result.value == "ineligible"
     income = next(r for r in ineligible.rule_results if r.rule_id is RuleId.ELIG_06)

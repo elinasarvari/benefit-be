@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
+from packages.domain.review import ReviewCause
 from packages.domain.verification import VerificationResult
 
 
@@ -24,3 +25,12 @@ def next_step(result: VerificationResult, *, request_already_sent: bool) -> Next
     if result.missing_items and not request_already_sent:
         return NextStep.request_information
     return NextStep.determine
+
+
+def review_cause(result: VerificationResult) -> ReviewCause | None:
+    """The cause of the "Verification review" task: the first open finding's (FR-002-16).
+    None when no finding is open."""
+    for finding in result.findings:
+        if finding.dismissed is None:
+            return ReviewCause(finding.cause.value)
+    return None

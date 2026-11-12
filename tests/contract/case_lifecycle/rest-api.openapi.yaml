@@ -138,9 +138,12 @@ components:
       additionalProperties: false
       required: [action, request_id]
       properties:
-        action: {type: string, enum: [approve_denial, override_to_approve]}
+        action: {type: string, enum: [approve_denial, override_to_approve, correct_value, dismiss_finding]}
         reason: {type: [string, "null"], maxLength: 500}
         request_id: {type: string, format: uuid}
+        # 002 (ADR-002-06, PL-4): additive; correct_value and dismiss_finding need a reason
+        corrected_value: {type: [object, "null"]}
+        finding_id: {type: [string, "null"], format: uuid}
     CaseStatus:
       type: object
       required: [case_id, state, received_on, decision_deadline, days_remaining, at_risk, outcome, denial_reason, open_review_task, pending_timer]

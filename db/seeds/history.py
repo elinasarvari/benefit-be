@@ -7,7 +7,7 @@ approval or denial outbox entry, and coverage period where approved, all in main
 Pre-written explanations and notices go to `generated/history/` as files keyed by
 `determination_id` and `case_id`: their stores belong to 004 and 011 (ADR-003-06).
 
-Demo households A, B and C get nothing here: they start with no open case and no coverage
+Demo households A, B, C and D get nothing here: they start with no open case and no coverage
 (FR-003-14). Every date is an offset from the dataset's anchor date, never the wall clock.
 """
 
@@ -19,8 +19,10 @@ from typing import Any
 from uuid import UUID, uuid5
 
 from db.seeds.households import YEARS, SeededDataset, SeededHousehold, snapshot_for
-from db.seeds.ids import HOUSEHOLD_A, HOUSEHOLD_B, HOUSEHOLD_C, rng, seeded_id
-from db.seeds.records import to_document
+from db.seeds.ids import HOUSEHOLD_A, HOUSEHOLD_B, HOUSEHOLD_C, HOUSEHOLD_D, rng, seeded_id
+from db.seeds.records import reference_record_documents, to_document
+from db.seeds.verification_history import COLLECTIONS as VERIFICATION_COLLECTIONS
+from db.seeds.verification_history import case_verification, reference_answers
 from packages.domain.auth import Role
 from packages.domain.case import (
     ActionOutcome,
@@ -57,7 +59,7 @@ DEMO_WINDOW_DAYS = 90  # coverage ending within this many days of the anchor is 
 REDETERMINATION_LEAD_DAYS = 60  # FR-007-01
 CASEWORKER = seeded_id("user-caseworker1")
 SYNTHETIC_REASON = "SYNTHETIC override: documents reviewed by the seeded caseworker."
-DEMO = frozenset({HOUSEHOLD_A, HOUSEHOLD_B, HOUSEHOLD_C})
+DEMO = frozenset({HOUSEHOLD_A, HOUSEHOLD_B, HOUSEHOLD_C, HOUSEHOLD_D})
 
 COLLECTIONS = (
     "cases",
@@ -68,6 +70,7 @@ COLLECTIONS = (
     "review_tasks",
     "caseworker_actions",
     "outbox",
+    *VERIFICATION_COLLECTIONS,  # the pay stub check of each case (002)
 )
 
 
@@ -133,6 +136,7 @@ def build_history(dataset: SeededDataset) -> History:
     notices: dict[tuple[UUID, str], dict[str, Any]] = {}
     due: list[dict[str, Any]] = []
     anchor = dataset.anchor
+    references = reference_answers(reference_record_documents(dataset))
     for plan in _plans(dataset):
         household = plan.household
         reference = f"seed-history-{household.seed_key}-{plan.label}"
@@ -165,6 +169,16 @@ def build_history(dataset: SeededDataset) -> History:
         )
         docs["household_snapshots"].append(_marked(snapshot, "snapshot_id"))
         docs["determinations"].append(_marked(record, "determination_id"))
+        checked = case_verification(
+            household.years[year],
+            case_id=case_id,
+            household_id=household.household_id,
+            as_of_date=received,
+            checked_at=_at(received, 18),
+            references=references,
+        )
+        for name, items in checked.items():
+            docs[name].extend(items)
 
         parts = _decide(
             household.household_id,

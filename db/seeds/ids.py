@@ -33,3 +33,6 @@ def seeded_id(name: str) -> uuid.UUID:
 HOUSEHOLD_A = seeded_id("household-a")
 HOUSEHOLD_B = seeded_id("household-b")
 HOUSEHOLD_C = seeded_id("household-c")
+# Demo household D (applicant4): eligible, one job, no history, no case, no coverage, so the
+# browser test that submits an application with a pay stub (002, SC-002-06) has a clean household.
+HOUSEHOLD_D = seeded_id("household-d")

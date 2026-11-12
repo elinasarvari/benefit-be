@@ -23,7 +23,7 @@ from db.seeds.documents import write_documents
 from db.seeds.history import History, build_history
 from db.seeds.households import YEARS, SeededDataset, build_dataset
 from db.seeds.ids import SEED
-from db.seeds.records import to_document
+from db.seeds.records import reference_record_documents, to_document
 from db.seeds.rule_sets import rule_set_documents, seed_rule_sets
 from db.seeds.test_sets import write_generated
 from db.seeds.users import DEMO_ACCOUNTS, SeedError, seed_users
@@ -127,6 +127,7 @@ def collection_counts(dataset: SeededDataset, history: History) -> dict[str, int
             len(h.years[y].members) for h in dataset.households for y in YEARS
         ),
         "seeded_verifications": len(verification_documents(dataset)),
+        "reference_records": len(reference_record_documents(dataset)),
         "rule_sets": len(rule_set_documents()),
         "users": len(DEMO_ACCOUNTS),
         "applications": len(history.documents["cases"]),
@@ -158,6 +159,7 @@ async def seed(settings: Settings) -> None:
         await db["households"].insert_many(household_documents(dataset))
         await db["household_members"].insert_many(member_documents(dataset))
         await db["seeded_verifications"].insert_many(verification_documents(dataset))
+        await db["reference_records"].insert_many(reference_record_documents(dataset))
         await seed_rule_sets(db)
         # Completed history goes into an empty `cases` collection only, so seeding on top of
         # a case inserted by hand never mixes the two.

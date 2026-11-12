@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import sys
+from decimal import Decimal
 from typing import Any
 
 import structlog
@@ -21,12 +22,15 @@ from apps.worker.activities.determination import DeterminationActivities
 from apps.worker.activities.review_tasks import ReviewTaskActivities
 from apps.worker.activities.smoke import smoke_step
 from apps.worker.activities.snapshot import SnapshotCapture
-from apps.worker.activities.verification import verify_documents
+from apps.worker.activities.verification import VerificationActivities
 from apps.worker.health import WorkerState, worker_checks
 from apps.worker.interceptors import ContextInterceptor
+from apps.worker.repositories.case_members import CaseMembers
 from apps.worker.repositories.cases import CaseRepository
 from apps.worker.repositories.caseworker_actions import CaseworkerActionRepository
 from apps.worker.repositories.determinations import MongoDeterminationStore
+from apps.worker.repositories.pay_stubs import EnteredPayStubs, MongoPayStubs
+from apps.worker.repositories.reference_records import MongoReferenceRecords
 from apps.worker.repositories.review_tasks import ReviewTaskRepository
 from apps.worker.repositories.snapshots import MongoSnapshotSource
 from apps.worker.repositories.verified_facts import SeededVerifications
@@ -81,13 +85,30 @@ def determination_activities(
     settings: Settings, mongo: MongoClient, clock: Clock
 ) -> DeterminationActivities:
     """The rules engine over snapshots, interim seeded verifications and the determination store."""
-    capture = SnapshotCapture(
-        MongoSnapshotSource(mongo, settings.MONGO_DB),
+    source = MongoSnapshotSource(mongo, settings.MONGO_DB)
+    # Entered pay stubs replace the seeded verifications for a case that has them (ADR-002-04).
+    verified = EnteredPayStubs(
+        MongoPayStubs(mongo, settings.MONGO_DB),
+        CaseMembers(source),
         SeededVerifications(mongo, settings.MONGO_DB),
         clock,
     )
+    capture = SnapshotCapture(source, verified, clock)
     return DeterminationActivities(
         capture, MongoDeterminationStore(mongo, settings.MONGO_DB), clock
+    )
+
+
+def verification_activities(
+    settings: Settings, mongo: MongoClient, clock: Clock
+) -> VerificationActivities:
+    """The pay stub check over members, entered stubs and the reference records (ADR-002-02)."""
+    return VerificationActivities(
+        CaseMembers(MongoSnapshotSource(mongo, settings.MONGO_DB)),
+        MongoPayStubs(mongo, settings.MONGO_DB),
+        MongoReferenceRecords(mongo, settings.MONGO_DB),
+        clock,
+        Decimal(str(settings.INCOME_MISMATCH_THRESHOLD_PERCENT)),
     )
 
 
@@ -97,13 +118,15 @@ def build_activities(settings: Settings, clock: Clock, mongo: MongoClient) -> li
     audit = MongoAuditWriter(mongo, settings.MONGO_AUDIT_DB)
     case_record = CaseRecordActivities(CaseRepository(mongo, settings.MONGO_DB, audit))
     determination = determination_activities(settings, mongo, clock)
+    verification = verification_activities(settings, mongo, clock)
     # 010's review-task activities, for the review loop CaseWorkflow composes (010 T018).
     review = review_activities(settings, mongo, clock)
     return [
         smoke_step,
         agent_steps.run,
         case_record.record_case_change,
-        verify_documents,
+        verification.verify_documents,
+        verification.apply_verification_action,
         determination.determine_eligibility,
         review.upsert_review_task,
         review.set_review_flag,

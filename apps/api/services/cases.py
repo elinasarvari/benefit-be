@@ -468,6 +468,8 @@ async def submit_review_action(
         reviewer_id=principal.user_id,  # never from the body
         reviewer_role=principal.role,
         reason=body.reason or None,  # the signal's reason is 1-500 chars or absent
+        corrected_value=body.corrected_value,  # 002 (ADR-002-06)
+        finding_id=body.finding_id,
         submitted_at=clock.now(),
     )
     allowed = await workflows.allowed_actions(case_id)

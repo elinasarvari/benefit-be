@@ -53,3 +53,22 @@ def test_FR_000_18_every_error_response_uses_the_error_envelope() -> None:
                 ):
                     ref = response["content"]["application/json"]["schema"]["$ref"]
                     assert ref.endswith("/ErrorEnvelope"), f"{method.upper()} {path} {status}"
+
+
+def test_FR_002_17_stub_routes_no_longer_501_and_openapi_current() -> None:
+    committed = json.loads(Path(OUTPUT).read_text())
+    live = json.loads(render(build_schema()))
+    routes = (
+        ("post", "/api/v1/cases/{case_id}/documents"),
+        ("put", "/api/v1/cases/{case_id}/documents/{document_id}/content"),
+        ("get", "/api/v1/cases/{case_id}/verification"),
+    )
+    for document in (committed, live):
+        for method, path in routes:
+            responses = document["paths"][path][method]["responses"]
+            assert "501" not in responses, f"{method.upper()} {path} still documents 501"
+    content = live["paths"][routes[1][1]]["put"]["responses"]
+    assert {"204", "403", "404", "413", "415"} <= content.keys()
+    assert committed["paths"] == live["paths"], "run `make openapi`"
+    action = live["components"]["schemas"]["ReviewActionBody"]["properties"]
+    assert {"corrected_value", "finding_id"} <= action.keys()

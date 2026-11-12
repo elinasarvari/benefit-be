@@ -43,6 +43,27 @@ def test_FR_003_08_rules_package_imports_no_io_clock_random_or_logging() -> None
     assert not offenders, offenders
 
 
+def test_FR_002_23_rules_purity_covers_verification() -> None:
+    path = RULES / "verification.py"
+    tree = ast.parse(path.read_text())
+    offenders = [
+        f"verification.py:{line} imports {module}"
+        for module, line in _imports(path)
+        if module.split(".")[0] in FORBIDDEN_MODULES
+    ]
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
+            owner = node.func.value
+            owner_name = owner.id if isinstance(owner, ast.Name) else getattr(owner, "attr", "")
+            if node.func.attr in CLOCK_CALLS and owner_name in {"datetime", "date", "time"}:
+                offenders.append(f"verification.py:{node.lineno} {owner_name}.{node.func.attr}")
+        if isinstance(node, ast.Name) and node.id in {"random", "open", "print"}:
+            offenders.append(f"verification.py:{node.lineno} uses {node.id}")
+
+    assert path.is_file()
+    assert not offenders, offenders
+
+
 def test_FR_003_08_rules_imported_only_by_worker_activities_seeds_and_evals() -> None:
     offenders = [
         f"{rel}:{line} imports {module}"

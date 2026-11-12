@@ -14,15 +14,6 @@ from packages.platform.settings import Settings
 from tests.apps.api.case_fakes import CaseApiHarness
 
 ID = str(uuid.uuid4())
-PAY_STUB = {
-    "employee_name": "Synthetic Person",
-    "employer": "Synthetic Employer",
-    "frequency": "weekly",
-    "gross_pay": "300.00",
-    "pay_date": "2026-03-01",
-    "content_type": "application/pdf",
-    "size_bytes": 1024,
-}
 
 A, C, S = Role.applicant, Role.caseworker, Role.supervisor
 APPLICANT_ONLY = (C, S)
@@ -30,9 +21,7 @@ STAFF_ONLY = (A,)
 
 # (method, path, allowed role, every refused role, JSON body or raw bytes)
 STUBS: list[tuple[str, str, Role, tuple[Role, ...], Any]] = [
-    ("POST", f"/api/v1/cases/{ID}/documents", A, APPLICANT_ONLY, PAY_STUB),
-    ("PUT", f"/api/v1/cases/{ID}/documents/{ID}/content", A, APPLICANT_ONLY, b"%PDF"),
-    ("GET", f"/api/v1/cases/{ID}/verification", C, STAFF_ONLY, None),
+    # 002's three document routes are built (tests/apps/api/test_documents_*.py)
     ("GET", f"/api/v1/cases/{ID}/explanations", C, STAFF_ONLY, None),
     ("GET", "/api/v1/me/history", A, APPLICANT_ONLY, None),
     ("GET", "/api/v1/me/notices", A, APPLICANT_ONLY, None),

@@ -18,7 +18,8 @@ from typing import Any
 
 from db.seeds.history import History
 from db.seeds.households import SeededDataset, StubDocument, snapshot_for
-from db.seeds.ids import SEED
+from db.seeds.ids import SEED, seeded_id
+from db.seeds.records import reference_record_documents, reference_tag_households
 from packages.domain.case import DeterminationOutcome
 from packages.rules import evaluate
 
@@ -94,6 +95,92 @@ def redetermination_items(dataset: SeededDataset, history: History) -> list[dict
     return items
 
 
+def answer_lookup(records: list[dict[str, Any]], lookup: dict[str, Any]) -> dict[str, Any]:
+    """The reference lookup's rule (FR-002-22) over `reference_records` documents: a record for
+    this household and member whose case-folded names and date of birth equal the lookup's is a
+    `match` (with its jobs), otherwise `no_match`; no record at all is `no_record`."""
+    record = next(
+        (
+            r
+            for r in records
+            if str(r["household_id"]) == lookup["household_id"]
+            and str(r["member_id"]) == lookup["member_id"]
+        ),
+        None,
+    )
+    if record is None:
+        return {"member_id": lookup["member_id"], "identity": "no_record", "jobs": []}
+    same = (
+        record["given_name"].casefold() == lookup["given_name"].casefold()
+        and record["family_name"].casefold() == lookup["family_name"].casefold()
+        and record["date_of_birth"].date().isoformat() == lookup["date_of_birth"]
+    )
+    jobs = (
+        [{"employer": j["employer"], "monthly_gross": j["monthly_gross"]} for j in record["jobs"]]
+        if same
+        else []
+    )
+    return {
+        "member_id": lookup["member_id"],
+        "identity": "match" if same else "no_match",
+        "jobs": jobs,
+    }
+
+
+def reference_lookup_items(dataset: SeededDataset) -> list[dict[str, Any]]:
+    """S-02: per household that carries a reference tag, or a mismatch, zero-income or
+    missing-document scenario, each member's lookup and the answer the seeds give (FR-002-22),
+    plus one lookup with no record."""
+    records = reference_record_documents(dataset)
+    tags = {
+        household_id: tag
+        for tag, household_ids in reference_tag_households(dataset).items()
+        for household_id in household_ids
+    }
+    interesting = {"mismatch", "zero-income", "missing-document"}
+    items = []
+    for household in dataset.households:
+        scenarios = set(household.scenarios) & interesting
+        if household.household_id in tags:
+            scenarios.add(tags[household.household_id])
+        if not scenarios:
+            continue
+        lookups = []
+        for member in household.years[2026].members:
+            lookup = {
+                "household_id": str(household.household_id),
+                "member_id": str(member.member_id),
+                "given_name": member.given_name,
+                "family_name": member.family_name,
+                "date_of_birth": member.date_of_birth.isoformat(),
+            }
+            expected = answer_lookup(records, lookup)
+            lookups.append({"lookup": lookup, "expected": expected})
+        items.append(
+            {
+                "household_id": str(household.household_id),
+                "scenarios": sorted(scenarios),
+                "lookups": lookups,
+            }
+        )
+    first = dataset.households[0]
+    nobody = {
+        "household_id": str(first.household_id),
+        "member_id": str(seeded_id("reference-no-record-member")),
+        "given_name": "Nobody",
+        "family_name": "Recorded",
+        "date_of_birth": "1990-01-01",
+    }
+    items.append(
+        {
+            "household_id": str(first.household_id),
+            "scenarios": ["no-record"],
+            "lookups": [{"lookup": nobody, "expected": answer_lookup(records, nobody)}],
+        }
+    )
+    return items
+
+
 def _ratio(numerator: int, denominator: int) -> str | None:
     if denominator == 0:
         return None
@@ -159,6 +246,7 @@ def write_generated(
         "expected_metrics": metric_items(
             [c for c in history.documents["cases"] if c["decided_on"] is not None]
         ),
+        "reference_lookup": reference_lookup_items(dataset),
     }
     for name, items in sets.items():
         _dump(out_dir / "testsets" / f"{name}.json", _envelope(anchor, generator_version, items))

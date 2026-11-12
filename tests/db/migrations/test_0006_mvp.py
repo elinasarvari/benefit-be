@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import importlib
 import uuid
+from datetime import UTC, datetime
 
 import pytest
 from pymongo.errors import DuplicateKeyError, WriteError
@@ -50,6 +51,19 @@ async def test_mvp_migration_0006_creates_collections_and_downgrade_drops_them(
             await up(ctx)
 
 
+def _reference_record(household: uuid.UUID, member: uuid.UUID) -> dict[str, object]:
+    return {
+        "_id": uuid.uuid4(),
+        "household_id": household,
+        "member_id": member,
+        "given_name": "Synthetic",
+        "family_name": "Person",
+        "date_of_birth": datetime(1990, 1, 1, tzinfo=UTC),
+        "jobs": [],
+        "synthetic": True,
+    }
+
+
 async def test_mvp_migration_0006_validators_require_household_and_case(
     integration_settings: Settings, owner_url: str
 ) -> None:
@@ -61,12 +75,9 @@ async def test_mvp_migration_0006_validators_require_household_and_case(
         household, member = uuid.uuid4(), uuid.uuid4()
         records = ctx.db["reference_records"]
         try:
-            await records.insert_one(
-                {"_id": uuid.uuid4(), "household_id": household, "member_id": member}
-            )
+            # A record that passes the current validator (0007 tightened 0006's minimal one).
+            await records.insert_one(_reference_record(household, member))
             with pytest.raises(DuplicateKeyError):
-                await records.insert_one(
-                    {"_id": uuid.uuid4(), "household_id": household, "member_id": member}
-                )
+                await records.insert_one(_reference_record(household, member))
         finally:
             await records.delete_many({"household_id": household})

@@ -18,6 +18,7 @@ from packages.domain.case import (
     CaseStatus,
     CaseSummary,
 )
+from packages.domain.review import CorrectedValue
 
 __all__ = [
     "ApplicationSubmission",
@@ -33,7 +34,14 @@ __all__ = [
 ReviewAction = Literal[
     ActionType.approve_denial,
     ActionType.override_to_approve,
+    # 002 (ADR-002-06): additive, each needs a reason
+    ActionType.correct_value,
+    ActionType.dismiss_finding,
 ]
+
+REASON_REQUIRED_ACTIONS = frozenset(
+    {ActionType.override_to_approve, ActionType.correct_value, ActionType.dismiss_finding}
+)
 
 
 class ReviewActionBody(BaseModel):
@@ -47,11 +55,15 @@ class ReviewActionBody(BaseModel):
     action: ReviewAction
     reason: str | None = Field(default=None, max_length=REASON_MAX_LENGTH, repr=False)
     request_id: UUID
+    corrected_value: CorrectedValue | None = None
+    finding_id: UUID | None = None
 
     @model_validator(mode="after")
-    def _override_needs_reason(self) -> Self:
-        if self.action is ActionType.override_to_approve and not (
-            self.reason and self.reason.strip()
-        ):
-            raise ValueError("override_to_approve requires a reason")
+    def _action_needs_its_fields(self) -> Self:
+        if self.action in REASON_REQUIRED_ACTIONS and not (self.reason and self.reason.strip()):
+            raise ValueError(f"{self.action.value} requires a reason")
+        if self.action is ActionType.correct_value and self.corrected_value is None:
+            raise ValueError("correct_value requires corrected_value")
+        if self.action is ActionType.dismiss_finding and self.finding_id is None:
+            raise ValueError("dismiss_finding requires finding_id")
         return self

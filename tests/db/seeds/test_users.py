@@ -8,7 +8,7 @@ from pydantic import SecretStr
 from pymongo.errors import WriteError
 
 from db.seeds.generate import seed
-from db.seeds.ids import HOUSEHOLD_A, HOUSEHOLD_B, HOUSEHOLD_C
+from db.seeds.ids import HOUSEHOLD_A, HOUSEHOLD_B, HOUSEHOLD_C, HOUSEHOLD_D
 from db.seeds.reset import reset
 from db.seeds.users import SeedError
 from packages.domain.auth import Role
@@ -34,12 +34,14 @@ async def test_FR_000_05_seed_creates_each_role(
         "applicant1": Role.applicant.value,
         "applicant2": Role.applicant.value,
         "applicant3": Role.applicant.value,
+        "applicant4": Role.applicant.value,
         "caseworker1": Role.caseworker.value,
         "supervisor1": Role.supervisor.value,
     }
     assert users["applicant1"]["household_id"] == HOUSEHOLD_A
     assert users["applicant2"]["household_id"] == HOUSEHOLD_B
     assert users["applicant3"]["household_id"] == HOUSEHOLD_C
+    assert users["applicant4"]["household_id"] == HOUSEHOLD_D
     assert "household_id" not in users["caseworker1"]
 
 

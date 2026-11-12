@@ -35,6 +35,8 @@ class AppError(Exception):
     """An error the client may see. The message is fixed per code and never carries internals."""
 
     code: ErrorCode = ErrorCode.internal_error
+    # A status other than the code's own, for refusals HTTP names more exactly (413, 415).
+    http_status: int | None = None
 
     def __init__(
         self,

@@ -15,7 +15,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
 
-from db.seeds.ids import HOUSEHOLD_A, HOUSEHOLD_B, HOUSEHOLD_C, rng, seeded_id
+from db.seeds.ids import HOUSEHOLD_A, HOUSEHOLD_B, HOUSEHOLD_C, HOUSEHOLD_D, rng, seeded_id
 from db.seeds.names import EMPLOYERS, FAMILY_NAMES, GIVEN_NAMES, OTHER_STATES
 from packages.domain.case import PayFrequency
 from packages.domain.household import (
@@ -127,6 +127,12 @@ def _plan(quota: random.Random) -> list[_Plan]:
         pick = next((i for i in pool if i not in named), None)
         if pick is not None:
             named[pick] = label
+    # Demo household D: the first plain eligible household (one job, no scenario tag).
+    tagged = mismatch | multi | changing | abroad | medicare
+    demo_d = next(
+        i for i in indices if i >= 2 and kinds[i] == "under" and i not in named and i not in tagged
+    )
+    named[demo_d] = "d"
 
     plans = []
     for i in indices:
@@ -148,7 +154,7 @@ def _plan(quota: random.Random) -> list[_Plan]:
             tags.add("zero-income")
         if kinds[i] == "missing":
             tags.add("missing-document")
-        if i == 0:
+        if i in (0, demo_d):
             tags.add("new-application")
         if i == 1:
             tags.add("renewal-due")
@@ -161,6 +167,8 @@ def _plan(quota: random.Random) -> list[_Plan]:
         elif named_label == "missing-document":
             # main's demo household C (applicant3, cannot-determine); ADR-003-07
             household_id, key = HOUSEHOLD_C, "household-c"
+        elif i == demo_d:
+            household_id, key = HOUSEHOLD_D, "household-d"
         elif named_label:
             household_id, key = seeded_id(f"household-{named_label}"), f"household-{named_label}"
         else:

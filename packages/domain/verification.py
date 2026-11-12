@@ -104,6 +104,15 @@ class VerificationResult(_Model):
     missing_items: list[MissingDocument] = Field(default_factory=list)
 
 
+class StubAssignment(_Model):
+    """The job the check gave a pay stub to. Stored beside the result so the determination's
+    facts reuse the check's matching (ADR-002-04); not part of the API's result."""
+
+    member_id: UUID
+    job_id: UUID
+    document_id: UUID
+
+
 class Correction(_Model):
     """A caseworker's correction of one entered detail (FR-002-19)."""
 
@@ -113,6 +122,8 @@ class Correction(_Model):
     reviewer_id: UUID
     reason: str = Field(min_length=1, max_length=REASON_MAX_LENGTH)
     corrected_at: datetime
+    # The action that made it: a replayed action finds its own correction by this id (TW-11).
+    action_id: UUID | None = None
 
 
 class PayStubDetails(_Model):
@@ -151,3 +162,13 @@ class ReferenceAnswer(_Model):
     member_id: UUID
     identity: IdentityMatch
     jobs: list[ReferenceJob] = Field(default_factory=list)
+
+
+def effective(details: PayStubDetails) -> PayStubDetails:
+    """The details with every correction applied in order: the last one per field wins."""
+    values: dict[str, object] = {}
+    for correction in details.corrections:
+        values[correction.field] = correction.new_value
+    if not values:
+        return details
+    return PayStubDetails.model_validate({**details.model_dump(), **values})
